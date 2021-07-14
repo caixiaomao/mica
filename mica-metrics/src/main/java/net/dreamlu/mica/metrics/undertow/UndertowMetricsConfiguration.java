@@ -17,12 +17,11 @@
 package net.dreamlu.mica.metrics.undertow;
 
 import io.undertow.Undertow;
+import io.undertow.UndertowOptions;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration;
-import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
-import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.boot.web.embedded.undertow.UndertowBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -35,7 +34,6 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnClass(Undertow.class)
 @AutoConfigureBefore(ServletWebServerFactoryAutoConfiguration.class)
-@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class UndertowMetricsConfiguration {
 
 	@Bean
@@ -44,8 +42,8 @@ public class UndertowMetricsConfiguration {
 	}
 
 	@Bean
-	public WebServerFactoryCustomizer<UndertowServletWebServerFactory> undertowMetricsWebServerFactoryCustomizer(UndertowMetrics undertowMetrics) {
-		return factory -> factory.addDeploymentInfoCustomizers(customizers -> customizers.setMetricsCollector(undertowMetrics));
+	public UndertowBuilderCustomizer undertowBuilderCustomizerEnableStatistics() {
+		return builder -> builder.setServerOption(UndertowOptions.ENABLE_STATISTICS, true);
 	}
 
 }

@@ -1,6 +1,89 @@
 # 变更记录
 
 ## 发行版本
+### v2.5.2 - 2021-07-02
+- :sparkles: 代码优化，减少 codacy 上的问题。
+- :sparkles: 优化 mica-http 添加 cookie 管理。
+- :memo: 完善 mica-http README.md。
+- :memo: 更新模块图。
+- :arrow_up: 升级到 Spring boot 到 2.5.2
+- :arrow_up: 升级到 Spring Native 到 0.10.1
+- :arrow_up: 升级到 mica auto 到 2.1.1
+
+### v2.4.8 - 2021-07-02
+- :sparkles: 代码优化，减少 codacy 上的问题。
+- :sparkles: 优化 mica-http 添加 cookie 管理。
+- :memo: 完善 mica-http README.md。
+- :memo: 更新模块图。
+- :arrow_up: 升级到 Spring boot 到 2.4.8
+- :arrow_up: 升级到 Spring Native 到 0.10.1
+- :arrow_up: 升级到 mica auto 到 2.1.1
+
+### v2.5.1 - 2021-06-15
+- :sparkles: 整体代码优化减少 codacy 上的问题。
+- :sparkles: mica-http 代码优化，支持自定义 Logger。
+- :sparkles: 添加 mica-activerecord 模块。
+- :sparkles: mica-core 优化 DisableValidationTrustManager 方便使用。
+- :sparkles: mica-redis 可自定义 RedisTemplate。
+- :sparkles: mica-logging loki sender 默认值优化，根据依赖判断，gitee #I3T68Y。
+- :arrow_up: 升级到 Spring cloud 2020.0.3。
+- :arrow_up: 升级到 Spring boot 到 2.5.1。
+
+### v2.4.7 - 2021-06-15
+- :sparkles: 整体代码优化减少 codacy 上的问题。
+- :sparkles: mica-http 代码优化，支持自定义 Logger。
+- :sparkles: 添加 mica-activerecord 模块。
+- :sparkles: mica-core 优化 DisableValidationTrustManager 方便使用。
+- :sparkles: mica-redis 可自定义 RedisTemplate。
+- :sparkles: mica-logging loki sender 默认值优化，根据依赖判断，gitee #I3T68Y。
+- :arrow_up: 升级到 Spring cloud 2020.0.3。
+- :arrow_up: 升级到 Spring boot 到 2.4.7。
+
+### v2.5.0.1 - 2021-05-25
+- :sparkles: 代码优化，减少 codacy 上的问题。
+- :bug: 修复 mica-redis RedisTemplate 初始化。
+- :memo: update README.md 更新文档地址。
+- :sparkles: 优化包导入。
+
+### v2.4.6.1 - 2021-05-25
+- :sparkles: 代码优化，减少 codacy 上的问题。
+- :bug: 修复 mica-redis RedisTemplate 初始化。
+- :memo: update README.md 更新文档地址。
+- :sparkles: 优化包导入。
+
+### v2.5.0 - 2021-05-23
+- :sparkles: mica-redis 微调，支持 Spring boot 到 2.5.0。
+- :arrow_up: 升级 Spring boot 到 2.5.0。
+
+### v2.4.6 - 2021-05-23
+- :sparkles: mica-logging 完成 loki 支持 #36 #I3PX2F。
+- :sparkles: mica-ip2region、mica-captcha 添加对 spring-native 的支持 #38 #I3PX2N。
+- :sparkles: mica-jetcache 添加 metrics 支持 #37 #I3PX2K。
+- :sparkles: mica-caffeine 添加不支持自定义 Caffeine bean 提示。
+- :sparkles: mica-core R 添加 throwOn 系列方法。
+- :sparkles: mica-redis 优化 ICacheKey 和 scan。
+- :sparkles: 代码统一优化，减少部分阿里巴巴规约提示。
+- :bug: mica-logging 修复 LoggingInitializer Spring boot 2.4.x 失效的问题。
+- :arrow_up: 升级 druid 到 1.2.6。
+- :arrow_up: 升级 Spring boot 到 2.4.6。
+
+### v2.4.5 - 2021-04-28
+- :sparkles: 添加 mica-jetcache 模块。
+- :sparkles: 添加 mica-lite 模块。
+- :sparkles: mica-metrics 重构 UndertowMetrics，暴露更加有用的指标。
+- :sparkles: mica-metrics 完善 DruidMetrics，暴露更加有用的指标。
+- :sparkles: mica-redis 调整 bean 名称 redisTemplate 为 micaRedisTemplate 减少冲突。
+- :sparkles: mica-captcha 中的 cache 改为每次读取， caffeine 会刷新，照成引用为 null。
+- :sparkles: mica-captcha 优化 bean 名称和添加 generateBase64Vo 方法。
+- :sparkles: mica-logging 减少 reflections 日志，readme 添加阿里云、腾讯云日志服务接入链接。
+- :sparkles: mica-qrcode 添加 base64 image 方法。
+- :sparkles: mica-core 添加网关通用 code。
+- :sparkles: mica-core 添加 CollectionUtil computeIfAbsent 方法 避免 jdk8 下的 bugs JDK-8161372
+- :sparkles: mica-core Pkcs7Encoder 中默认的 BLOCK_SIZE 改为 16 github #35 兼容更多编程语言。
+- :bug: mica-caffeine 多 cache name 时报错。
+- :arrow_up: 升级 spring boot 到 2.4.5
+- :arrow_up: 升级 mica-weixin 到 2.1.0（优化对 mica-caffeine 的支持）
+
 ### v2.4.4-GA - 2021-03-28
 - :sparkles: mica-qrcode 新增模块，友好的二维码识别和生成
 - :sparkles: mica-logging 重新设计，`logstash-logback-encoder` 调整为可选，`logstash` 和 `json` 需手动添加依赖

@@ -16,8 +16,8 @@
 
 package net.dreamlu.mica.captcha.config;
 
-import net.dreamlu.mica.captcha.core.Captcha;
 import net.dreamlu.mica.captcha.cache.ICaptchaCache;
+import net.dreamlu.mica.captcha.core.Captcha;
 import net.dreamlu.mica.captcha.service.CaptchaServiceImpl;
 import net.dreamlu.mica.captcha.service.ICaptchaService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -25,6 +25,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.nativex.hint.NativeHint;
+import org.springframework.nativex.hint.ResourceHint;
 
 /**
  * 验证码自动配置
@@ -39,17 +41,18 @@ import org.springframework.context.annotation.Configuration;
 	matchIfMissing = true
 )
 @EnableConfigurationProperties(MicaCaptchaProperties.class)
+@NativeHint(resources = @ResourceHint(patterns = "^fonts/.*.ttf"))
 public class MicaCaptchaAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public Captcha captcha(MicaCaptchaProperties properties) {
+	public Captcha imageCaptcha(MicaCaptchaProperties properties) {
 		return new Captcha(properties.getCaptchaType());
 	}
 
 	@Bean
 	@ConditionalOnMissingBean
-	public ICaptchaService captchaService(MicaCaptchaProperties properties,
+	public ICaptchaService imageCaptchaService(MicaCaptchaProperties properties,
 										  ICaptchaCache captchaCache,
 										  Captcha captcha) {
 		return new CaptchaServiceImpl(properties, captchaCache, captcha);

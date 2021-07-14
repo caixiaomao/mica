@@ -72,7 +72,7 @@ public class CaffeineAutoCacheConfiguration {
 		return customizers.customize(cacheManager);
 	}
 
-	private CaffeineAutoCacheManager createCacheManager(CacheProperties cacheProperties,
+	private static CaffeineAutoCacheManager createCacheManager(CacheProperties cacheProperties,
 														ObjectProvider<Caffeine<Object, Object>> caffeine, ObjectProvider<CaffeineSpec> caffeineSpec,
 														ObjectProvider<CacheLoader<Object, Object>> cacheLoader) {
 		CaffeineAutoCacheManager cacheManager = new CaffeineAutoCacheManager();
@@ -81,7 +81,7 @@ public class CaffeineAutoCacheConfiguration {
 		return cacheManager;
 	}
 
-	private void setCacheBuilder(CacheProperties cacheProperties,
+	private static void setCacheBuilder(CacheProperties cacheProperties,
 								 @Nullable CaffeineSpec caffeineSpec,
 								 @Nullable Caffeine<Object, Object> caffeine,
 								 CaffeineCacheManager cacheManager) {

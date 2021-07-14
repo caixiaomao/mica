@@ -67,7 +67,7 @@ public class MicaLoggingConfiguration {
 
 		@Bean
 		public LoggingFileAppender loggingFileAppender(Environment environment,
-												MicaLoggingProperties properties) {
+													   MicaLoggingProperties properties) {
 			return new LoggingFileAppender(environment, properties);
 		}
 	}
@@ -79,7 +79,7 @@ public class MicaLoggingConfiguration {
 
 		@Bean
 		public LoggingJsonFileAppender loggingJsonFileAppender(Environment environment,
-												MicaLoggingProperties properties) {
+															   MicaLoggingProperties properties) {
 			return new LoggingJsonFileAppender(environment, properties);
 		}
 	}
@@ -91,8 +91,20 @@ public class MicaLoggingConfiguration {
 
 		@Bean
 		public LoggingLogStashAppender loggingLogStashAppender(Environment environment,
-												MicaLoggingProperties properties) {
+															   MicaLoggingProperties properties) {
 			return new LoggingLogStashAppender(environment, properties);
+		}
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	@Conditional(LoggingCondition.class)
+	@ConditionalOnAppender(Appender.LOKI)
+	public static class LoggingLokiConfiguration {
+
+		@Bean
+		public LoggingLokiAppender loggingLokiAppender(Environment environment,
+													   MicaLoggingProperties properties) {
+			return new LoggingLokiAppender(environment, properties);
 		}
 	}
 
@@ -114,6 +126,7 @@ public class MicaLoggingConfiguration {
 	@Order(Ordered.HIGHEST_PRECEDENCE)
 	private static class LoggingCondition extends SpringBootCondition {
 		private static final String LOG_STASH_CLASS_NAME = "net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder";
+		private static final String LOKI_CLASS_NAME = "com.github.loki4j.logback.Loki4jAppender";
 
 		@Override
 		public ConditionOutcome getMatchOutcome(ConditionContext context, AnnotatedTypeMetadata metadata) {
@@ -124,7 +137,16 @@ public class MicaLoggingConfiguration {
 			ClassLoader classLoader = context.getClassLoader();
 			Boolean fileEnabled = environment.getProperty(MicaLoggingProperties.Files.PREFIX + ".enabled", Boolean.class, Boolean.TRUE);
 			Boolean logStashEnabled = environment.getProperty(MicaLoggingProperties.Logstash.PREFIX + ".enabled", Boolean.class, Boolean.FALSE);
-			if (Appender.LOG_STASH == appender) {
+			Boolean lokiEnabled = environment.getProperty(MicaLoggingProperties.Loki.PREFIX + ".enabled", Boolean.class, Boolean.FALSE);
+			if (Appender.LOKI == appender) {
+				if (ObjectUtil.isFalse(lokiEnabled)) {
+					return ConditionOutcome.noMatch("Logging loki is not enabled.");
+				}
+				if (hasLokiDependencies(classLoader)) {
+					return ConditionOutcome.match();
+				}
+				throw new IllegalStateException("Logging loki is enabled, please add com.github.loki4j loki-logback-appender dependencies.");
+			} else if (Appender.LOG_STASH == appender) {
 				if (ObjectUtil.isFalse(logStashEnabled)) {
 					return ConditionOutcome.noMatch("Logging logstash is not enabled.");
 				}
@@ -154,6 +176,10 @@ public class MicaLoggingConfiguration {
 
 		private static boolean hasLogStashDependencies(ClassLoader classLoader) {
 			return ClassUtils.isPresent(LOG_STASH_CLASS_NAME, classLoader);
+		}
+
+		private static boolean hasLokiDependencies(ClassLoader classLoader) {
+			return ClassUtils.isPresent(LOKI_CLASS_NAME, classLoader);
 		}
 	}
 

@@ -16,7 +16,10 @@
 
 package net.dreamlu.mica.ip2region.core;
 
+import net.dreamlu.mica.ip2region.utils.IpInfoUtil;
 import org.springframework.lang.Nullable;
+
+import java.util.function.Function;
 
 /**
  * ip 搜索器
@@ -87,5 +90,73 @@ public interface Ip2regionSearcher {
 	 */
 	@Nullable
 	IpInfo binarySearch(String ip);
+
+	/**
+	 * 读取 ipInfo 中的信息
+	 *
+	 * @param ip       ip
+	 * @param function Function
+	 * @return 地址
+	 */
+	@Nullable
+	default String getInfo(long ip, Function<IpInfo, String> function) {
+		return IpInfoUtil.readInfo(memorySearch(ip), function);
+	}
+
+	/**
+	 * 读取 ipInfo 中的信息
+	 *
+	 * @param ip       ip
+	 * @param function Function
+	 * @return 地址
+	 */
+	@Nullable
+	default String getInfo(String ip, Function<IpInfo, String> function) {
+		return IpInfoUtil.readInfo(memorySearch(ip), function);
+	}
+
+	/**
+	 * 获取地址信息
+	 *
+	 * @param ip ip
+	 * @return 地址
+	 */
+	@Nullable
+	default String getAddress(long ip) {
+		return getInfo(ip, IpInfo::getAddress);
+	}
+
+	/**
+	 * 获取地址信息
+	 *
+	 * @param ip ip
+	 * @return 地址
+	 */
+	@Nullable
+	default String getAddress(String ip) {
+		return getInfo(ip, IpInfo::getAddress);
+	}
+
+	/**
+	 * 获取地址信息包含 isp
+	 *
+	 * @param ip ip
+	 * @return 地址
+	 */
+	@Nullable
+	default String getAddressAndIsp(long ip) {
+		return getInfo(ip, IpInfo::getAddressAndIsp);
+	}
+
+	/**
+	 * 获取地址信息包含 isp
+	 *
+	 * @param ip ip
+	 * @return 地址
+	 */
+	@Nullable
+	default String getAddressAndIsp(String ip) {
+		return getInfo(ip, IpInfo::getAddressAndIsp);
+	}
 
 }

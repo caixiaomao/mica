@@ -22,6 +22,7 @@ import net.dreamlu.mica.ip2region.core.IpInfo;
 import org.springframework.lang.Nullable;
 
 import java.util.Arrays;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -74,5 +75,20 @@ public class IpInfoUtil {
 			return null;
 		}
 		return info;
+	}
+
+	/**
+	 * 读取 IpInfo
+	 *
+	 * @param ipInfo   IpInfo
+	 * @param function Function
+	 * @return info
+	 */
+	@Nullable
+	public static String readInfo(@Nullable IpInfo ipInfo, Function<IpInfo, String> function) {
+		if (ipInfo == null) {
+			return null;
+		}
+		return function.apply(ipInfo);
 	}
 }

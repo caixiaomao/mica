@@ -14,9 +14,19 @@
  * limitations under the License.
  */
 
-@NonNullApi
-@NonNullFields
-package net.dreamlu.mica.spider.http;
+package net.dreamlu.mica.activerecord.tx;
 
-import org.springframework.lang.NonNullApi;
-import org.springframework.lang.NonNullFields;
+import java.lang.annotation.*;
+
+/**
+ * 事务 aop 注解
+ *
+ * @author L.cm
+ */
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Inherited
+@Documented
+public @interface Tx {
+
+}

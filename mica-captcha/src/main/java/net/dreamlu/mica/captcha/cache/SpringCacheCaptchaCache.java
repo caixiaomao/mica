@@ -33,15 +33,16 @@ import java.util.Objects;
 public class SpringCacheCaptchaCache implements ICaptchaCache, InitializingBean {
 	private final MicaCaptchaProperties properties;
 	private final CacheManager cacheManager;
-	private Cache captchaCache;
 
 	@Override
 	public void put(String cacheName, String uuid, String value) {
+		Cache captchaCache = getCache(cacheName);
 		captchaCache.put(uuid, value);
 	}
 
 	@Override
 	public String getAndRemove(String cacheName, String uuid) {
+		Cache captchaCache = getCache(cacheName);
 		String value = captchaCache.get(uuid, String.class);
 		if (value != null) {
 			captchaCache.evict(uuid);
@@ -49,10 +50,20 @@ public class SpringCacheCaptchaCache implements ICaptchaCache, InitializingBean 
 		return value;
 	}
 
+	/**
+	 * 发现 caffeine 中会刷新会导致引用为 null
+	 *
+	 * @return Cache
+	 */
+	private Cache getCache(String cacheName) {
+		return cacheManager.getCache(cacheName);
+	}
+
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		String cacheName = properties.getCacheName();
 		Cache cache = cacheManager.getCache(cacheName);
-		this.captchaCache = Objects.requireNonNull(cache, "mica-captcha spring cache name " + cacheName + " is null.");
+		Objects.requireNonNull(cache, "mica-captcha spring cache name " + cacheName + " is null.");
 	}
+
 }

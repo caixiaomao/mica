@@ -19,6 +19,7 @@ package net.dreamlu.mica.xss.config;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,8 +31,10 @@ import java.util.List;
  */
 @Getter
 @Setter
-@ConfigurationProperties("mica.xss")
+@RefreshScope
+@ConfigurationProperties(MicaXssProperties.PREFIX)
 public class MicaXssProperties {
+	public static final String PREFIX = "mica.xss";
 
 	/**
 	 * 开启xss

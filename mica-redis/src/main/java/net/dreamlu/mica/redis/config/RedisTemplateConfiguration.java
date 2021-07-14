@@ -21,11 +21,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping;
 import net.dreamlu.mica.redis.cache.MicaRedisCache;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -40,9 +40,8 @@ import org.springframework.data.redis.serializer.RedisSerializer;
  *
  * @author L.cm
  */
-@EnableCaching
 @Configuration(proxyBeanMethods = false)
-@AutoConfigureBefore(RedisAutoConfiguration.class)
+@AutoConfigureAfter(RedisAutoConfiguration.class)
 @EnableConfigurationProperties(MicaRedisProperties.class)
 public class RedisTemplateConfiguration {
 
@@ -70,10 +69,11 @@ public class RedisTemplateConfiguration {
 		return new GenericJackson2JsonRedisSerializer(objectMapper);
 	}
 
-	@Bean(name = "redisTemplate")
-	@ConditionalOnMissingBean(RedisTemplate.class)
-	public RedisTemplate<String, Object> redisTemplate(
-		RedisConnectionFactory redisConnectionFactory, RedisSerializer<Object> redisSerializer) {
+	@Bean
+	@ConditionalOnMissingBean(name = "micaRedisTemplate")
+	@ConditionalOnSingleCandidate(RedisConnectionFactory.class)
+	public RedisTemplate<String, Object> micaRedisTemplate(RedisConnectionFactory redisConnectionFactory,
+														   RedisSerializer<Object> redisSerializer) {
 		RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
 		// key 序列化
 		RedisSerializer<String> keySerializer = RedisSerializer.string();
@@ -88,7 +88,7 @@ public class RedisTemplateConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean(ValueOperations.class)
-	public ValueOperations valueOperations(RedisTemplate redisTemplate) {
+	public ValueOperations<String, Object> valueOperations(RedisTemplate<String, Object> redisTemplate) {
 		return redisTemplate.opsForValue();
 	}
 

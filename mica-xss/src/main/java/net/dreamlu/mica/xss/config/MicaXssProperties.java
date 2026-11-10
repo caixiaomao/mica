@@ -18,7 +18,9 @@ package net.dreamlu.mica.xss.config;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.dreamlu.mica.xss.core.XssType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,21 +32,27 @@ import java.util.List;
  */
 @Getter
 @Setter
-@ConfigurationProperties("mica.xss")
+@RefreshScope
+@ConfigurationProperties(MicaXssProperties.PREFIX)
 public class MicaXssProperties {
+	public static final String PREFIX = "mica.xss";
 
 	/**
 	 * 开启xss
 	 */
 	private boolean enabled = true;
 	/**
-	 * 全局：对文件进行首尾 trim
+	 * 全局：{@link XssType#FORM}配置
 	 */
-	private boolean trimText = true;
+	private FormConfig form = new FormConfig();
+	/**
+	 * 全局：{@link XssType#JACKSON}配置
+	 */
+	private JacksonConfig jackson = new JacksonConfig();
 	/**
 	 * 模式：clear 清理（默认），escape 转义
 	 */
-	private Mode mode = Mode.clear;
+	private Mode mode = Mode.CLEAR;
 	/**
 	 * [clear 专用] prettyPrint，默认关闭： 保留换行
 	 */
@@ -66,11 +74,52 @@ public class MicaXssProperties {
 		/**
 		 * 清理
 		 */
-		clear,
+		CLEAR,
 		/**
 		 * 转义
 		 */
-		escape;
+		ESCAPE,
+		/**
+		 * 校验，抛出异常
+		 */
+		VALIDATE
 	}
 
+	@Getter
+	@Setter
+	public static class FormConfig {
+		/**
+		 * 对字符串首尾 trim
+		 */
+		boolean trimText = true;
+		/**
+		 * 对字符串去除特殊字符
+		 */
+		String charsToDelete = "";
+		/**
+		 * 对字符串trim后，如果为空字符串，转null
+		 */
+		boolean emptyAsNull = false;
+		/**
+		 * [charsToDelete, trimText, emptyAsNull]三个规则，对集合中的元素也生效
+		 */
+		boolean enableInCollection = false;
+	}
+
+	@Getter
+	@Setter
+	public static class JacksonConfig {
+		/**
+		 * 对字符串首尾 trim
+		 */
+		boolean trimText = true;
+		/**
+		 * 对字符串去除特殊字符
+		 */
+		String charsToDelete = "";
+		/**
+		 * 对字符串trim后，如果为空字符串，转null
+		 */
+		boolean emptyAsNull = false;
+	}
 }

@@ -16,17 +16,22 @@
 
 package net.dreamlu.mica.core.result;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import net.dreamlu.mica.core.exception.ServiceException;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * 响应信息主体
@@ -38,17 +43,26 @@ import java.util.Optional;
 @Setter
 @ToString
 @ApiModel(description = "返回信息")
+@Schema(description = "返回信息")
 @NoArgsConstructor
 public class R<T> implements Serializable {
+	@Serial
 	private static final long serialVersionUID = -1160662278280275915L;
 
 	@ApiModelProperty(value = "code值", required = true)
+	@Schema(description = "code值", requiredMode = Schema.RequiredMode.REQUIRED)
 	private int code;
 	@ApiModelProperty(value = "是否成功", required = true)
+	@Schema(description = "是否成功", requiredMode = Schema.RequiredMode.REQUIRED)
 	private boolean success;
 	@ApiModelProperty(value = "消息", required = true)
+	@Schema(description = "消息", requiredMode = Schema.RequiredMode.REQUIRED)
 	private String msg;
+	@Nullable
+	@Valid
 	@ApiModelProperty("返回对象")
+	@Schema(description = "返回对象")
+	@JsonInclude(JsonInclude.Include.NON_NULL)
 	private T data;
 
 	private R(IResultCode resultCode) {
@@ -59,11 +73,11 @@ public class R<T> implements Serializable {
 		this(resultCode, msg, null);
 	}
 
-	private R(IResultCode resultCode, T data) {
+	private R(IResultCode resultCode, @Nullable T data) {
 		this(resultCode, resultCode.getMsg(), data);
 	}
 
-	private R(IResultCode resultCode, String msg, T data) {
+	private R(IResultCode resultCode, String msg, @Nullable T data) {
 		this.code = resultCode.getCode();
 		this.msg = msg;
 		this.data = data;
@@ -114,7 +128,7 @@ public class R<T> implements Serializable {
 	 * @param <T> 泛型标记
 	 * @return Result
 	 */
-	public static <T> R<T> success() {
+	public static <T> R<T> ok() {
 		return new R<>(SystemCode.SUCCESS);
 	}
 
@@ -125,8 +139,29 @@ public class R<T> implements Serializable {
 	 * @param <T>  泛型标记
 	 * @return Result
 	 */
-	public static <T> R<T> success(@Nullable T data) {
+	public static <T> R<T> ok(@Nullable T data) {
 		return new R<>(SystemCode.SUCCESS, data);
+	}
+
+	/**
+	 * 返回成功
+	 *
+	 * @param <T> 泛型标记
+	 * @return Result
+	 */
+	public static <T> R<T> success() {
+		return ok();
+	}
+
+	/**
+	 * 成功-携带数据
+	 *
+	 * @param data 数据
+	 * @param <T>  泛型标记
+	 * @return Result
+	 */
+	public static <T> R<T> success(@Nullable T data) {
+		return ok(data);
 	}
 
 	/**
@@ -185,6 +220,49 @@ public class R<T> implements Serializable {
 	 */
 	public static <T> R<T> fail(IResultCode rCode, String msg) {
 		return new R<>(rCode, msg);
+	}
+
+	/**
+	 * 断言 成功时：直接抛出失败异常，返回传入的 result。
+	 *
+	 * @param predicate 断言函数
+	 * @param object    模型
+	 * @param result    响应对象
+	 * @param <T>       泛型
+	 */
+	public static <T> void throwOn(Predicate<T> predicate, T object, R<?> result) {
+		if (predicate.test(object)) {
+			throw new ServiceException(result);
+		}
+	}
+
+	/**
+	 * 断言 成功时：直接抛出失败异常，返回传入的 result。
+	 *
+	 * @param predicate 断言函数
+	 * @param object    模型
+	 * @param rCode     响应 code
+	 * @param <T>       泛型
+	 */
+	public static <T> void throwOn(Predicate<T> predicate, T object, IResultCode rCode) {
+		if (predicate.test(object)) {
+			throw new ServiceException(rCode);
+		}
+	}
+
+	/**
+	 * 断言 成功时：直接抛出失败异常，返回传入的 result。
+	 *
+	 * @param predicate 断言函数
+	 * @param object    模型
+	 * @param rCode     响应 code
+	 * @param msg       自定义消息
+	 * @param <T>       泛型
+	 */
+	public static <T> void throwOn(Predicate<T> predicate, T object, IResultCode rCode, String msg) {
+		if (predicate.test(object)) {
+			throw new ServiceException(rCode, msg);
+		}
 	}
 
 	/**

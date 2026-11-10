@@ -16,13 +16,12 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-
 import javax.imageio.ImageIO;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.*;
+import java.net.URI;
 import java.net.URL;
 
 /**
@@ -30,7 +29,6 @@ import java.net.URL;
  *
  * @author L.cm
  */
-@UtilityClass
 public class ImageUtil {
 
 	/**
@@ -79,7 +77,7 @@ public class ImageUtil {
 	 */
 	private static BufferedImage readUrl(String url) {
 		try {
-			return ImageIO.read(new URL(url));
+			return ImageIO.read(URI.create(url).toURL());
 		} catch (IOException e) {
 			throw Exceptions.unchecked(e);
 		}
@@ -158,7 +156,7 @@ public class ImageUtil {
 	 *
 	 * @param im         RenderedImage to be written.
 	 * @param formatName a String containing the informal name of the format.
-	 * @return false if no appropriate writer is found.
+	 * @return byte array.
 	 */
 	public static byte[] writeAsBytes(RenderedImage im, String formatName) {
 		try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -176,7 +174,7 @@ public class ImageUtil {
 	 *
 	 * @param im         RenderedImage to be written.
 	 * @param formatName a String containing the informal name of the format.
-	 * @return false if no appropriate writer is found.
+	 * @return byte array input stream.
 	 */
 	public static ByteArrayInputStream writeAsStream(RenderedImage im, String formatName) {
 		return new ByteArrayInputStream(writeAsBytes(im, formatName));

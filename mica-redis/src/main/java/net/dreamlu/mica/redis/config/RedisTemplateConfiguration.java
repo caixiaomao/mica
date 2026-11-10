@@ -16,35 +16,50 @@
 
 package net.dreamlu.mica.redis.config;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping;
+import net.dreamlu.mica.core.utils.JsonUtil;
 import net.dreamlu.mica.redis.cache.MicaRedisCache;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import net.dreamlu.mica.redis.resolver.DefaultRedisKeyResolver;
+import net.dreamlu.mica.redis.resolver.RedisKeyResolver;
+import net.dreamlu.mica.redis.resolver.RedisKeyResolverSerializer;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnSingleCandidate;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.core.KotlinDetector;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
+import tools.jackson.databind.DefaultTyping;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.jsontype.PolymorphicTypeValidator;
 
 /**
  * RedisTemplate  配置
  *
  * @author L.cm
  */
-@EnableCaching
-@Configuration(proxyBeanMethods = false)
-@AutoConfigureBefore(RedisAutoConfiguration.class)
+@AutoConfiguration(after = DataRedisAutoConfiguration.class)
 @EnableConfigurationProperties(MicaRedisProperties.class)
 public class RedisTemplateConfiguration {
+	public static final String REDIS_TEMPLATE_BEAN_NAME = "micaRedisTemplate";
+
+	/**
+	 * 默认的 redis key 处理
+	 * @param properties MicaRedisProperties
+	 * @return RedisKeyResolver
+	 */
+	@Bean
+	@ConditionalOnMissingBean(RedisKeyResolver.class)
+	public RedisKeyResolver redisKeyResolver(MicaRedisProperties properties) {
+		return new DefaultRedisKeyResolver(properties);
+	}
 
 	/**
 	 * value 值 序列化
@@ -53,30 +68,37 @@ public class RedisTemplateConfiguration {
 	 */
 	@Bean
 	@ConditionalOnMissingBean(RedisSerializer.class)
-	public RedisSerializer<Object> redisSerializer(MicaRedisProperties properties,
-												   ObjectProvider<ObjectMapper> objectProvider) {
+	public RedisSerializer<Object> redisSerializer(MicaRedisProperties properties) {
 		MicaRedisProperties.SerializerType serializerType = properties.getSerializerType();
 		if (MicaRedisProperties.SerializerType.JDK == serializerType) {
 			ClassLoader classLoader = this.getClass().getClassLoader();
 			return new JdkSerializationRedisSerializer(classLoader);
 		}
 		// jackson findAndRegisterModules，use copy
-		ObjectMapper objectMapper = objectProvider.getIfAvailable(ObjectMapper::new).copy();
+		JsonMapper jsonMapper = JsonUtil.getInstance();
+		JsonMapper.Builder jsonMapperBuilder = jsonMapper.rebuild();
+		jsonMapperBuilder.changeDefaultPropertyInclusion(handler ->  handler.withValueInclusion(JsonInclude.Include.NON_NULL));
 		// findAndRegisterModules
-		objectMapper.findAndRegisterModules();
-		// class type info to json
-		GenericJackson2JsonRedisSerializer.registerNullValueSerializer(objectMapper, null);
-		objectMapper.activateDefaultTyping(objectMapper.getPolymorphicTypeValidator(), DefaultTyping.NON_FINAL, As.PROPERTY);
-		return new GenericJackson2JsonRedisSerializer(objectMapper);
+		jsonMapperBuilder.findAndAddModules();
+		// 配置宽松的类型验证器
+		PolymorphicTypeValidator polymorphicTypeValidator = RedisJackosnPolymorphicTypeValidator.INSTANCE;
+		if (KotlinDetector.isKotlinPresent() && properties.isEnableKotlinJson()) {
+			jsonMapperBuilder.activateDefaultTyping(polymorphicTypeValidator, DefaultTyping.NON_FINAL_AND_ENUMS, As.PROPERTY);
+		} else {
+			jsonMapperBuilder.activateDefaultTyping(polymorphicTypeValidator, DefaultTyping.NON_FINAL, As.PROPERTY);
+		}
+		return new GenericJacksonJsonRedisSerializer(jsonMapperBuilder.build());
 	}
 
-	@Bean(name = "redisTemplate")
-	@ConditionalOnMissingBean(RedisTemplate.class)
-	public RedisTemplate<String, Object> redisTemplate(
-		RedisConnectionFactory redisConnectionFactory, RedisSerializer<Object> redisSerializer) {
+	@Bean
+	@ConditionalOnMissingBean(name = REDIS_TEMPLATE_BEAN_NAME)
+	@ConditionalOnSingleCandidate(RedisConnectionFactory.class)
+	public RedisTemplate<String, Object> micaRedisTemplate(RedisConnectionFactory redisConnectionFactory,
+														   RedisKeyResolver redisKeyResolver,
+														   RedisSerializer<Object> redisSerializer) {
 		RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
 		// key 序列化
-		RedisSerializer<String> keySerializer = RedisSerializer.string();
+		RedisKeyResolverSerializer keySerializer = new RedisKeyResolverSerializer(RedisSerializer.string(), redisKeyResolver);
 		redisTemplate.setKeySerializer(keySerializer);
 		redisTemplate.setHashKeySerializer(keySerializer);
 		// value 序列化
@@ -88,12 +110,12 @@ public class RedisTemplateConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean(ValueOperations.class)
-	public ValueOperations valueOperations(RedisTemplate redisTemplate) {
-		return redisTemplate.opsForValue();
+	public ValueOperations<String, Object> valueOperations(RedisTemplate<String, Object> micaRedisTemplate) {
+		return micaRedisTemplate.opsForValue();
 	}
 
 	@Bean
-	public MicaRedisCache redisClient(RedisTemplate<String, Object> redisTemplate) {
-		return new MicaRedisCache(redisTemplate);
+	public MicaRedisCache micaRedisCache(RedisTemplate<String, Object> micaRedisTemplate) {
+		return new MicaRedisCache(micaRedisTemplate);
 	}
 }

@@ -16,10 +16,10 @@
 
 package net.dreamlu.mica.redis.cache;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.ToString;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 
@@ -30,20 +30,22 @@ import java.time.Duration;
  */
 @Getter
 @ToString
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class CacheKey {
+
 	/**
 	 * redis key
 	 */
-	private String key;
+	private final String key;
+
 	/**
 	 * 超时时间 秒
 	 */
 	@Nullable
-	private Duration expire;
+	private final Duration expire;
 
 	public CacheKey(String key) {
-		this.key = key;
+		this(key, null);
 	}
 
 }

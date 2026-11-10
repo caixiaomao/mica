@@ -16,7 +16,6 @@
 
 package net.dreamlu.mica.logging.appender;
 
-import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.LoggerContext;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.core.constant.MicaConstant;
@@ -25,10 +24,10 @@ import net.dreamlu.mica.logging.config.MicaLoggingProperties;
 import net.dreamlu.mica.logging.utils.LogStashUtil;
 import net.logstash.logback.appender.LogstashTcpSocketAppender;
 import net.logstash.logback.encoder.LogstashEncoder;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 
-import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -46,13 +45,15 @@ public class LoggingLogStashAppender implements ILoggingAppender {
 	public LoggingLogStashAppender(Environment environment,
 								   MicaLoggingProperties properties) {
 		this.properties = properties;
-		// 1. 服务名和环境和日志目录
+		// 1. 服务名和环境
 		String appName = environment.getRequiredProperty(MicaConstant.SPRING_APP_NAME_KEY);
 		String profile = environment.getRequiredProperty(MicaConstant.ACTIVE_PROFILES_PROPERTY);
 		// 2. json 自定义字段
-		Map<String, Object> customFields = new HashMap<>();
+		Map<String, Object> customFields = new HashMap<>(4);
 		customFields.put("appName", appName);
 		customFields.put("profile", profile);
+		// 3. 自定义配置的字段
+		customFields.putAll(properties.getLogstash().getCustomFieldMap());
 		this.customFieldsJson = JsonUtil.toJson(customFields);
 		LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 		this.start(context);
@@ -84,16 +85,16 @@ public class LoggingLogStashAppender implements ILoggingAppender {
 	 * @param customFields       a {@link String} object.
 	 * @param logStashProperties a {@link net.dreamlu.mica.logging.config.MicaLoggingProperties.Logstash} object.
 	 */
-	public static void addLogStashTcpSocketAppender(LoggerContext context,
+	private static void addLogStashTcpSocketAppender(LoggerContext context,
 													String customFields,
 													MicaLoggingProperties.Logstash logStashProperties) {
 		// More documentation is available at: https://github.com/logstash/logstash-logback-encoder
 		final LogstashTcpSocketAppender logStashAppender = new LogstashTcpSocketAppender();
-		logStashAppender.addDestinations(new InetSocketAddress(logStashProperties.getHost(), logStashProperties.getPort()));
+		logStashAppender.addDestination(logStashProperties.getDestinations());
 		logStashAppender.setContext(context);
 		logStashAppender.setEncoder(logstashEncoder(customFields));
 		logStashAppender.setName(ASYNC_LOG_STASH_APPENDER_NAME);
-		logStashAppender.setQueueSize(logStashProperties.getQueueSize());
+		logStashAppender.setRingBufferSize(logStashProperties.getRingBufferSize());
 		logStashAppender.start();
 		// 先删除，再添加
 		context.getLogger(Logger.ROOT_LOGGER_NAME).detachAppender(ASYNC_LOG_STASH_APPENDER_NAME);

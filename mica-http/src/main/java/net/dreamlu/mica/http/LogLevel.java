@@ -16,22 +16,16 @@
 
 package net.dreamlu.mica.http;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import okhttp3.logging.HttpLoggingInterceptor;
-
 /**
  * 日志级别
  *
  * @author L.cm
  */
-@Getter
-@AllArgsConstructor
 public enum LogLevel {
 	/**
 	 * No logs.
 	 */
-	NONE(HttpLoggingInterceptor.Level.NONE),
+	NONE,
 	/**
 	 * Logs request and response lines.
 	 *
@@ -42,7 +36,7 @@ public enum LogLevel {
 	 * <-- 200 OK (22ms, 6-byte body)
 	 * }</pre>
 	 */
-	BASIC(HttpLoggingInterceptor.Level.BASIC),
+	BASIC,
 	/**
 	 * Logs request and response lines and their respective headers.
 	 *
@@ -60,7 +54,7 @@ public enum LogLevel {
 	 * <-- END HTTP
 	 * }</pre>
 	 */
-	HEADERS(HttpLoggingInterceptor.Level.HEADERS),
+	HEADERS,
 	/**
 	 * Logs request and response lines and their respective headers and bodies (if present).
 	 *
@@ -82,7 +76,5 @@ public enum LogLevel {
 	 * <-- END HTTP
 	 * }</pre>
 	 */
-	BODY(HttpLoggingInterceptor.Level.BODY);
-
-	private HttpLoggingInterceptor.Level level;
+	BODY;
 }

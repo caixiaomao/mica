@@ -24,15 +24,16 @@ import java.util.Random;
  *
  * @author L.cm
  */
-public class Holder {
+public interface Holder {
 
 	/**
 	 * RANDOM
 	 */
-	public final static Random RANDOM = new Random();
+	Random RANDOM = new Random();
 
 	/**
 	 * SECURE_RANDOM
 	 */
-	public final static SecureRandom SECURE_RANDOM = new SecureRandom();
+	SecureRandom SECURE_RANDOM = new SecureRandom();
+
 }

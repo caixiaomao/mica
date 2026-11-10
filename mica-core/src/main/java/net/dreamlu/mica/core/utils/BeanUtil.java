@@ -17,17 +17,18 @@
 package net.dreamlu.mica.core.utils;
 
 
-import lombok.experimental.UtilityClass;
 import net.dreamlu.mica.core.beans.MicaBeanCopier;
 import net.dreamlu.mica.core.beans.MicaBeanMap;
 import net.dreamlu.mica.core.convert.MicaConverter;
 import net.dreamlu.mica.core.exception.ServiceException;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.PropertyAccessorFactory;
 import org.springframework.cglib.beans.BeanGenerator;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.FastByteArrayOutputStream;
 
 import java.io.IOException;
@@ -40,7 +41,6 @@ import java.util.*;
  *
  * @author L.cm
  */
-@UtilityClass
 public class BeanUtil extends org.springframework.beans.BeanUtils {
 
 	/**
@@ -63,9 +63,18 @@ public class BeanUtil extends org.springframework.beans.BeanUtils {
 	 * @return 对象
 	 */
 	public static <T> T newInstance(String clazzStr) {
+		return newInstance(forName(clazzStr));
+	}
+
+	/**
+	 * forName
+	 *
+	 * @param clazzStr 类名
+	 * @return Class
+	 */
+	public static Class<?> forName(String clazzStr) {
 		try {
-			Class<?> clazz = ClassUtil.forName(clazzStr, null);
-			return newInstance(clazz);
+			return ClassUtils.forName(clazzStr, null);
 		} catch (ClassNotFoundException e) {
 			throw new ServiceException(e);
 		}
@@ -179,7 +188,7 @@ public class BeanUtil extends org.springframework.beans.BeanUtils {
 	 * @return T
 	 */
 	@Nullable
-	public static <T> T copy(@Nullable Object source, Class sourceClazz, Class<T> targetClazz) {
+	public static <T> T copy(@Nullable Object source, Class<?> sourceClazz, Class<T> targetClazz) {
 		if (source == null) {
 			return null;
 		}
@@ -373,7 +382,7 @@ public class BeanUtil extends org.springframework.beans.BeanUtils {
 			return null;
 		}
 		T to = newInstance(targetClazz);
-		BeanUtil.copyProperties(source, to);
+		BeanUtils.copyProperties(source, to);
 		return to;
 	}
 
@@ -476,8 +485,9 @@ public class BeanUtil extends org.springframework.beans.BeanUtils {
 		BeanGenerator generator = new BeanGenerator();
 		generator.setSuperclass(superclass);
 		generator.setUseCache(true);
+		generator.setContextClass(superclass);
 		for (BeanProperty prop : props) {
-			generator.addProperty(prop.getName(), prop.getType());
+			generator.addProperty(prop.name(), prop.type());
 		}
 		return generator.create();
 	}
@@ -506,12 +516,12 @@ public class BeanUtil extends org.springframework.beans.BeanUtils {
 		Assert.notNull(src, "diff Map src is null.");
 		Assert.notNull(src, "diff Map dist is null.");
 		// 改变
-		Map<String, Object> difference = new HashMap<>();
+		Map<String, Object> difference = new HashMap<>(8);
 		difference.putAll(src);
 		difference.putAll(dist);
 		difference.entrySet().removeAll(src.entrySet());
 		// 老值
-		Map<String, Object> oldValues = new HashMap<>();
+		Map<String, Object> oldValues = new HashMap<>(8);
 		difference.keySet().forEach((k) -> oldValues.put(k, src.get(k)));
 		BeanDiff diff = new BeanDiff();
 		diff.getFields().addAll(difference.keySet());

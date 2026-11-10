@@ -19,13 +19,14 @@ package net.dreamlu.mica.core.convert;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.dreamlu.mica.core.function.CheckedFunction;
-import net.dreamlu.mica.core.utils.ClassUtil;
+import net.dreamlu.mica.core.utils.CollectionUtil;
 import net.dreamlu.mica.core.utils.ConvertUtil;
 import net.dreamlu.mica.core.utils.ReflectUtil;
 import net.dreamlu.mica.core.utils.Unchecked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.cglib.core.Converter;
 import org.springframework.core.convert.TypeDescriptor;
-import org.springframework.lang.Nullable;
+import org.springframework.util.ClassUtils;
 
 import java.lang.reflect.Field;
 import java.util.Map;
@@ -59,7 +60,7 @@ public class MicaConverter implements Converter {
 			return null;
 		}
 		// 类型一样，不需要转换
-		if (ClassUtil.isAssignableValue(target, value)) {
+		if (ClassUtils.isAssignableValue(target, value)) {
 			return value;
 		}
 		try {
@@ -82,12 +83,12 @@ public class MicaConverter implements Converter {
 		// 忽略抛出异常的函数，定义完整泛型，避免编译问题
 		CheckedFunction<String, TypeDescriptor> uncheckedFunction = (key) -> {
 			// 这里 property 理论上不会为 null
-			Field field = ReflectUtil.getField(clazz, fieldName);
+			Field field = ReflectUtil.findField(clazz, fieldName);
 			if (field == null) {
 				throw new NoSuchFieldException(fieldName);
 			}
 			return new TypeDescriptor(field);
 		};
-		return TYPE_CACHE.computeIfAbsent(srcCacheKey, Unchecked.function(uncheckedFunction));
+		return CollectionUtil.computeIfAbsent(TYPE_CACHE, srcCacheKey, Unchecked.function(uncheckedFunction));
 	}
 }

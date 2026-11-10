@@ -21,19 +21,41 @@
 compile("net.dreamlu:mica-xss:${version}")
 ```
 
-## 配置
-| 配置项                         | 默认值 | 说明                                        |
-| ------------------------------ | ------ | ----------------------------------------- |
-| mica.xss.enabled               | true   | 开启xss                                   |
-| mica.xss.trim-text             | true   | 【全局】是否去除文本首尾空格                  |
-| mica.xss.mode                  | clear  | 模式：clear 清理（默认），escape 转义        |
-| mica.xss.pretty-print          | false  | `clear 专用` prettyPrint，默认关闭： 保留换行  |
-| mica.xss.enable-escape         | false  | `clear 专用` 转义，默认关闭                   |
-| mica.xss.path-patterns         | `/**`  | 拦截的路由，例如: `/api/order/**`             |
-| mica.xss.path-exclude-patterns |        | 放行的路由，默认为空                           |
+
+## 默认配置
+| 配置项                         | 默认值   | 说明                                                         |
+| ------------------------------ | -------- | ------------------------------------------------------------ |
+| mica.xss.enabled               | true     | 开启xss                                                      |
+| ~~mica.xss.trim-text~~         | ~~true~~ | ~~【全局】是否去除文本首尾空格，已弃用，将在下版本删除~~     |
+| mica.xss.mode                  | clear    | 模式：clear 清理（默认）、escape 转义、validate 校验（2.7.4新增） |
+| mica.xss.pretty-print          | false    | `clear 专用` prettyPrint，默认关闭： 保留换行                |
+| mica.xss.enable-escape         | false    | `clear 专用` 转义，默认关闭                                  |
+| mica.xss.path-patterns         | `/**`    | 拦截的路由，例如: `/api/order/**`                            |
+| mica.xss.path-exclude-patterns |          | 放行的路由，默认为空                                         |
+| mica.xss.path-exclude-patterns |          | 放行的路由，默认为空                                         |
+
+### xss.form 配置
+| 配置项                             | 默认值 | 说明                                                         |
+| ---------------------------------- | ------ | ------------------------------------------------------------ |
+| mica.xss.form.trim-text            | true   | 是否去除字符串首尾空格                                       |
+| mica.xss.form.chars-to-delete      |        | 需要去除的特殊字符，按字符去除                               |
+| mica.xss.form.empty-as-null        | false  | 去除首尾空格后，空字符串转null                               |
+| mica.xss.form.enable-in-collection | false  | [trim-text, chars-to-delete, empty-as-null]三个规则，对集合中的元素也生效 |
+
+### xss.jackson 配置
+
+| 配置项                           | 默认值 | 说明                           |
+| -------------------------------- | ------ | ------------------------------ |
+| mica.xss.jackson.trim-text       | true   | 是否去除字符串首尾空格         |
+| mica.xss.jackson.chars-to-delete |        | 需要去除的特殊字符，按字符去除 |
+| mica.xss.jackson.empty-as-null   | false  | 去除首尾空格后，空字符串转null |
 
 ## 注解
 可以使用 `@XssCleanIgnore` 注解对方法和类级别进行忽略。
+
+## 针对某个 json 对象 `String` 字段处理
+1. 添加 `@XssCleanIgnore` 注解对路由忽略 xss 处理。
+2. 对需要处理得字段添加 `@JsonDeserialize(using = XssCleanDeserializer.class)` 注解。
 
 ## 自定义 xss 清理
 如果内置的 xss 清理规则不满足需求，可以自己实现 `XssCleaner`，注册成 Spring bean 即可。
@@ -51,7 +73,7 @@ public XssCleaner xssCleaner() {
 public class MyXssCleaner implements XssCleaner {
 
 	@Override
-	public String clean(String html) {
+	public String clean(String name, String html, XssType type) {
 		Document.OutputSettings settings = new Document.OutputSettings()
 			// 1. 转义用最少的规则，没找到关闭的方法
 			.escapeMode(Entities.EscapeMode.xhtml)
@@ -59,9 +81,60 @@ public class MyXssCleaner implements XssCleaner {
 			.prettyPrint(false);
 		// 注意会被转义
 		String escapedText = Jsoup.clean(html, "", XssUtil.WHITE_LIST, settings);
-		// 3. 反转义
-		return Entities.unescape(escapedText);
+		// 3. 反转义，但不会还原出能生成标签或属性的字符
+		return XssUtil.unescapeEntities(escapedText);
 	}
 
 }
 ```
+
+> ⚠️ 反转义时不要使用 `Entities.unescape`，它会把实体编码的标签还原成真实标签，
+> 也会把属性值中的双引号实体还原成双引号导致属性逃逸，请使用 `XssUtil.unescapeEntities`。
+
+## 清理模式输出的使用
+`clear` 模式输出的是 html 片段，只能用于富文本渲染（如 `v-html`、`innerHTML`），
+普通文本场景请使用 `escape` 模式，或在输出时自行转义。
+
+## 白名单说明
+`clear` 模式使用内置白名单（`XssUtil.WHITE_LIST`）过滤 html：
+
+- **标签**：只保留富文本常用标签（`a`、`p`、`div`、`span`、`img`、`table` 等），
+  其它标签会被删除，但标签里的文字会保留（`script`、`style`、`iframe` 的内容会一起删除）。
+- **属性**：只保留白名单里的属性，所有 `on*` 事件属性都会被删除。
+- **url 协议**：`href`、`src` 等只允许 `http`、`https`、`ftp`、`mailto`、`tel` 与相对地址。
+- **style**：会过滤掉 `javascript:`、`vbscript:`、`expression()` 等危险写法。
+
+> ⚠️ `style` 允许任意 css，理论上可以用来做全屏覆盖、伪造界面等 css 注入。
+> 如果不需要行内样式，在应用启动前移除 style 属性即可：
+> ```java
+> XssUtil.WHITE_LIST.removeAttributes(":all", "style");
+> ```
+
+## 校验模式
+
+校验模式会抛出异常，可以使用 Spring boot 的全局异常处理。
+
+| 模式    | 抛出的异常                                    |
+| ------- | --------------------------------------------- |
+| jackson | HttpMessageNotReadableException               |
+| form    | MethodArgumentConversionNotSupportedException |
+
+**获取 XssException**
+```java
+Throwable rootCause = NestedExceptionUtils.getRootCause(e);
+if (rootCause instanceof XssException) {
+    // xss 的异常
+}
+```
+
+## 手动清理
+对于部分场景可以选择手动处理，注入 `XssCleaner` 调用方法即可。
+
+```java
+@Autowired
+private XssCleaner xssCleaner;
+```
+
+## mica-xss 不生效？？？
+1. Spring 5.0 (Spring boot 2.0) 开始项目里有继承 `WebMvcConfigurerAdapter`、`WebMvcConfigurationSupport` 的要改成实现 `WebMvcConfigurer`。
+2. 排查是否自定义了 Jackson ObjectMapper bean 或者是自定义了 String 字符串序列化。

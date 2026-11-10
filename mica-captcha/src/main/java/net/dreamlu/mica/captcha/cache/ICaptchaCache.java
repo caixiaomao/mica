@@ -18,7 +18,7 @@ package net.dreamlu.mica.captcha.cache;
 
 import net.dreamlu.mica.captcha.core.CaptchaUtil;
 import net.dreamlu.mica.core.utils.CharPool;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * 验证码缓存
@@ -34,6 +34,10 @@ public interface ICaptchaCache {
 
 	/**
 	 * 保存缓存
+	 *
+	 * <p>
+	 *     非 spring cache 等启动就确定超时的缓存，重新改方法
+	 * </p>
 	 *
 	 * @param cacheKey    缓存key
 	 * @param value       缓存value
@@ -58,6 +62,10 @@ public interface ICaptchaCache {
 
 	/**
 	 * 获取并删除缓存，验证码不管成功只能验证一次
+	 *
+	 * <p>
+	 *     非 spring cache 等启动就确定超时的缓存，重新改方法
+	 * </p>
 	 *
 	 * @param cacheKey 缓存空间
 	 * @return 验证码

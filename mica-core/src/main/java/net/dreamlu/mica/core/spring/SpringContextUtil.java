@@ -16,6 +16,7 @@
 
 package net.dreamlu.mica.core.spring;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.ObjectProvider;
@@ -23,7 +24,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.core.ResolvableType;
-import org.springframework.lang.Nullable;
 
 /**
  * spring 工具类
@@ -86,6 +86,10 @@ public class SpringContextUtil implements ApplicationContextAware {
 	}
 
 	public static void publishEvent(ApplicationEvent event) {
+		publishEvent((Object) event);
+	}
+
+	public static void publishEvent(Object event) {
 		if (context == null) {
 			return;
 		}

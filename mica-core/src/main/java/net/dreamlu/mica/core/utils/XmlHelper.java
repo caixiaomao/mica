@@ -17,7 +17,7 @@
 package net.dreamlu.mica.core.utils;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -296,7 +296,7 @@ public class XmlHelper {
 			try {
 				documentBuilderFactory.setFeature(feature, state);
 			} catch (Exception e) {
-				log.warn(String.format("Failed to set the XML Document Builder factory feature %s to %s", feature, state), e);
+				log.warn("Failed to set the XML Document Builder factory feature {} to {}", feature, state, e);
 			}
 		}
 	}

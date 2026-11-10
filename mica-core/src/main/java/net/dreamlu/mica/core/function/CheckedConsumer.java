@@ -16,7 +16,7 @@
 
 package net.dreamlu.mica.core.function;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.io.Serializable;
 
@@ -34,7 +34,6 @@ public interface CheckedConsumer<T> extends Serializable {
 	 * @param t T
 	 * @throws Throwable UncheckedException
 	 */
-	@Nullable
 	void accept(@Nullable T t) throws Throwable;
 
 }

@@ -18,12 +18,12 @@ package net.dreamlu.mica.redis.config;
 
 import net.dreamlu.mica.core.utils.StringPool;
 import net.dreamlu.mica.core.utils.StringUtil;
+import org.jspecify.annotations.Nullable;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheWriter;
-import org.springframework.lang.Nullable;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -37,8 +37,9 @@ import java.util.Map;
 public class RedisAutoCacheManager extends RedisCacheManager {
 
 	public RedisAutoCacheManager(RedisCacheWriter cacheWriter, RedisCacheConfiguration defaultCacheConfiguration,
-								 Map<String, RedisCacheConfiguration> initialCacheConfigurations, boolean allowInFlightCacheCreation) {
-		super(cacheWriter, defaultCacheConfiguration, initialCacheConfigurations, allowInFlightCacheCreation);
+								 boolean allowInFlightCacheCreation,
+								 Map<String, RedisCacheConfiguration> initialCacheConfigurations) {
+		super(cacheWriter, defaultCacheConfiguration, allowInFlightCacheCreation, initialCacheConfigurations);
 	}
 
 	@Override

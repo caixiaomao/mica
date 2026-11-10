@@ -17,16 +17,15 @@
 package net.dreamlu.mica.http;
 
 import lombok.RequiredArgsConstructor;
+import net.dreamlu.mica.core.retry.IRetry;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.function.Predicate;
+import java.util.function.BiPredicate;
 
 /**
  * 重试拦截器，应对代理问题
@@ -35,23 +34,23 @@ import java.util.function.Predicate;
  */
 @RequiredArgsConstructor
 public class RetryInterceptor implements Interceptor {
-	private final RetryPolicy retryPolicy;
+	private final IRetry retry;
+	@Nullable
+	private final BiPredicate<Integer, ResponseSpec> respPredicate;
 
 	@Override
 	public Response intercept(Chain chain) throws IOException {
 		Request request = chain.request();
-		RetryTemplate template = createRetryTemplate(retryPolicy);
-		return template.execute(context -> {
+		return retry.execute((retryCount) -> {
 			Response response = chain.proceed(request);
 			// 结果集校验
-			Predicate<ResponseSpec> respPredicate = retryPolicy.getRespPredicate();
 			if (respPredicate == null) {
 				return response;
 			}
 			// copy 一份 body
 			ResponseBody body = response.peekBody(Long.MAX_VALUE);
 			try (HttpResponse httpResponse = new HttpResponse(response)) {
-				if (respPredicate.test(httpResponse)) {
+				if (respPredicate.test(retryCount, httpResponse)) {
 					throw new IOException("Http Retry ResponsePredicate test Failure.");
 				}
 			}
@@ -59,16 +58,4 @@ public class RetryInterceptor implements Interceptor {
 		});
 	}
 
-	private static RetryTemplate createRetryTemplate(RetryPolicy policy) {
-		RetryTemplate template = new RetryTemplate();
-		// 重试策略
-		SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
-		retryPolicy.setMaxAttempts(policy.getMaxAttempts());
-		// 设置间隔策略
-		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
-		backOffPolicy.setBackOffPeriod(policy.getSleepMillis());
-		template.setRetryPolicy(retryPolicy);
-		template.setBackOffPolicy(backOffPolicy);
-		return template;
-	}
 }

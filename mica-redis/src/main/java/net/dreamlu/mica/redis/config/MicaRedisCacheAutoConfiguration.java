@@ -16,27 +16,29 @@
 
 package net.dreamlu.mica.redis.config;
 
+import net.dreamlu.mica.core.utils.CharPool;
+import net.dreamlu.mica.core.utils.StringPool;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.AutoConfigureAfter;
-import org.springframework.boot.autoconfigure.cache.CacheManagerCustomizers;
-import org.springframework.boot.autoconfigure.cache.CacheProperties;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.cache.autoconfigure.CacheAutoConfiguration;
+import org.springframework.boot.cache.autoconfigure.CacheManagerCustomizers;
+import org.springframework.boot.cache.autoconfigure.CacheProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
-import org.springframework.lang.Nullable;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 扩展redis-cache支持注解cacheName添加超时时间
@@ -44,9 +46,8 @@ import java.util.Map;
  *
  * @author L.cm
  */
-@Configuration(proxyBeanMethods = false)
-@AutoConfigureAfter(RedisAutoConfiguration.class)
-@ConditionalOnBean(RedisConnectionFactory.class)
+@EnableCaching
+@AutoConfiguration(before = CacheAutoConfiguration.class)
 @EnableConfigurationProperties(CacheProperties.class)
 public class MicaRedisCacheAutoConfiguration {
 
@@ -70,8 +71,10 @@ public class MicaRedisCacheAutoConfiguration {
 	}
 
 	@Primary
-	@Bean("redisCacheManager")
-	public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
+	@Bean("cacheResolver")
+	public CacheManager redisCacheManager(ObjectProvider<RedisConnectionFactory> connectionFactoryObjectProvider) {
+		RedisConnectionFactory connectionFactory = connectionFactoryObjectProvider.getIfAvailable();
+		Objects.requireNonNull(connectionFactory, "Bean RedisConnectionFactory is null.");
 		RedisCacheWriter redisCacheWriter = RedisCacheWriter.nonLockingRedisCacheWriter(connectionFactory);
 		RedisCacheConfiguration cacheConfiguration = this.determineConfiguration();
 		List<String> cacheNames = this.cacheProperties.getCacheNames();
@@ -83,7 +86,9 @@ public class MicaRedisCacheAutoConfiguration {
 		}
 		boolean allowInFlightCacheCreation = true;
 		boolean enableTransactions = false;
-		RedisAutoCacheManager cacheManager = new RedisAutoCacheManager(redisCacheWriter, cacheConfiguration, initialCaches, allowInFlightCacheCreation);
+		RedisAutoCacheManager cacheManager = new RedisAutoCacheManager(
+			redisCacheWriter, cacheConfiguration, allowInFlightCacheCreation, initialCaches
+		);
 		cacheManager.setTransactionAware(enableTransactions);
 		return this.customizerInvoker.customize(cacheManager);
 	}
@@ -94,23 +99,21 @@ public class MicaRedisCacheAutoConfiguration {
 		} else {
 			CacheProperties.Redis redisProperties = this.cacheProperties.getRedis();
 			RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
+			// 设置默认缓存名分割符号为 “:”，如果已经带 “:” 则不设置。
+			config = config.computePrefixWith(name -> name.endsWith(StringPool.COLON) ? name : name + CharPool.COLON);
 			config = config.serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(redisSerializer));
 			if (redisProperties.getTimeToLive() != null) {
 				config = config.entryTtl(redisProperties.getTimeToLive());
 			}
-
 			if (redisProperties.getKeyPrefix() != null) {
 				config = config.prefixCacheNameWith(redisProperties.getKeyPrefix());
 			}
-
 			if (!redisProperties.isCacheNullValues()) {
 				config = config.disableCachingNullValues();
 			}
-
 			if (!redisProperties.isUseKeyPrefix()) {
 				config = config.disableKeyPrefix();
 			}
-
 			return config;
 		}
 	}

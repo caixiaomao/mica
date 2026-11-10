@@ -16,18 +16,18 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
+import org.springframework.util.StreamUtils;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * IOUtil
  *
  * @author L.cm
  */
-@UtilityClass
 public class IoUtil extends org.springframework.util.StreamUtils {
 
 	/**
@@ -39,9 +39,9 @@ public class IoUtil extends org.springframework.util.StreamUtils {
 		if (closeable == null) {
 			return;
 		}
-		if (closeable instanceof Flushable) {
+		if (closeable instanceof Flushable flushable) {
 			try {
-				((Flushable) closeable).flush();
+				flushable.flush();
 			} catch (IOException ignored) {
 				// ignore
 			}
@@ -60,7 +60,7 @@ public class IoUtil extends org.springframework.util.StreamUtils {
 	 * @return the requested String
 	 */
 	public static String readToString(InputStream input) {
-		return readToString(input, Charsets.UTF_8);
+		return readToString(input, StandardCharsets.UTF_8);
 	}
 
 	/**
@@ -72,7 +72,7 @@ public class IoUtil extends org.springframework.util.StreamUtils {
 	 */
 	public static String readToString(@Nullable InputStream input, Charset charset) {
 		try {
-			return IoUtil.copyToString(input, charset);
+			return StreamUtils.copyToString(input, charset);
 		} catch (IOException e) {
 			throw Exceptions.unchecked(e);
 		} finally {
@@ -82,7 +82,7 @@ public class IoUtil extends org.springframework.util.StreamUtils {
 
 	public static byte[] readToByteArray(@Nullable InputStream input) {
 		try {
-			return IoUtil.copyToByteArray(input);
+			return StreamUtils.copyToByteArray(input);
 		} catch (IOException e) {
 			throw Exceptions.unchecked(e);
 		} finally {

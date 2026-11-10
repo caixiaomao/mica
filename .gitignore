@@ -13,6 +13,7 @@
 bin/
 
 ### IntelliJ IDEA ###
+!.idea/icon.png
 .idea
 out/
 *.iws
@@ -27,7 +28,14 @@ dist/
 nbdist/
 .nb-gradle/
 
+### AI Code ###
+.codegraph
+.claude
+.opencode
+-p
+
 ### maven ###
+.flattened-pom.xml
 target/
 *.war
 *.ear
@@ -53,5 +61,4 @@ logs
 Thumbs.db
 Servers
 .metadata
-upload
 gen_code

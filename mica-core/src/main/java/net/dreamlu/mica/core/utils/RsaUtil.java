@@ -16,14 +16,15 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
 import net.dreamlu.mica.core.tuple.KeyPair;
-import org.springframework.lang.Nullable;
-import org.springframework.util.Base64Utils;
+import org.jspecify.annotations.Nullable;
 
 import javax.crypto.Cipher;
+import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.security.interfaces.RSAKey;
 import java.security.spec.*;
 import java.util.Objects;
 
@@ -37,13 +38,13 @@ import java.util.Objects;
  *
  * @author L.cm
  */
-@UtilityClass
 public class RsaUtil {
 	/**
 	 * 数字签名，密钥算法
 	 */
 	public static final String RSA_ALGORITHM = "RSA";
 	public static final String RSA_PADDING = "RSA/ECB/PKCS1Padding";
+	public static final String RSA_OAEP_PADDING = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
 
 	/**
 	 * 获取 KeyPair
@@ -51,7 +52,7 @@ public class RsaUtil {
 	 * @return KeyPair
 	 */
 	public static KeyPair genKeyPair() {
-		return genKeyPair(1024);
+		return genKeyPair(2048);
 	}
 
 	/**
@@ -136,7 +137,7 @@ public class RsaUtil {
 	 */
 	public static PublicKey getPublicKey(String base64PubKey) {
 		Objects.requireNonNull(base64PubKey, "base64 public key is null.");
-		byte[] keyBytes = Base64Utils.decodeFromString(base64PubKey);
+		byte[] keyBytes = Base64Util.decodeFromString(base64PubKey);
 		X509EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
 		try {
 			KeyFactory keyFactory = KeyFactory.getInstance(RSA_ALGORITHM);
@@ -165,7 +166,7 @@ public class RsaUtil {
 	 */
 	public static PrivateKey getPrivateKey(String base64PriKey) {
 		Objects.requireNonNull(base64PriKey, "base64 private key is null.");
-		byte[] keyBytes = Base64Utils.decodeFromString(base64PriKey);
+		byte[] keyBytes = Base64Util.decodeFromString(base64PriKey);
 		PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
 		try {
 			KeyFactory keyFactory = KeyFactory.getInstance(RSA_ALGORITHM);
@@ -182,7 +183,7 @@ public class RsaUtil {
 	 * @return base 64 编码后的 key
 	 */
 	public static String getKeyString(Key key) {
-		return Base64Utils.encodeToString(key.getEncoded());
+		return Base64Util.encodeToString(key.getEncoded());
 	}
 
 	/**
@@ -197,7 +198,7 @@ public class RsaUtil {
 	}
 
 	/**
-	 * 共要加密
+	 * 公钥加密
 	 *
 	 * @param base64PublicKey base64 的公钥
 	 * @param data            待加密的内容
@@ -208,14 +209,14 @@ public class RsaUtil {
 	}
 
 	/**
-	 * 共要加密
+	 * 公钥加密
 	 *
 	 * @param publicKey 公钥
 	 * @param data      待加密的内容
 	 * @return 加密后的内容
 	 */
 	public static byte[] encrypt(PublicKey publicKey, byte[] data) {
-		return rsa(publicKey, data, Cipher.ENCRYPT_MODE);
+		return encryptRsa(publicKey, data);
 	}
 
 	/**
@@ -248,7 +249,7 @@ public class RsaUtil {
 	 * @return 加密后的内容
 	 */
 	public static byte[] encryptByPrivateKey(PrivateKey privateKey, byte[] data) {
-		return rsa(privateKey, data, Cipher.ENCRYPT_MODE);
+		return encryptRsa(privateKey, data);
 	}
 
 	/**
@@ -263,7 +264,7 @@ public class RsaUtil {
 		if (StringUtil.isBlank(data)) {
 			return null;
 		}
-		return Base64Utils.encodeToString(encrypt(publicKey, data.getBytes(Charsets.UTF_8)));
+		return Base64Util.encodeToString(encrypt(publicKey, data.getBytes(StandardCharsets.UTF_8)));
 	}
 
 	/**
@@ -308,7 +309,7 @@ public class RsaUtil {
 	 * @return 解密后的数据
 	 */
 	public static byte[] decrypt(PrivateKey privateKey, byte[] data) {
-		return rsa(privateKey, data, Cipher.DECRYPT_MODE);
+		return decryptRsa(privateKey, data);
 	}
 
 	/**
@@ -319,22 +320,91 @@ public class RsaUtil {
 	 * @return 解密后的数据
 	 */
 	public static byte[] decryptByPublicKey(PublicKey publicKey, byte[] data) {
-		return rsa(publicKey, data, Cipher.DECRYPT_MODE);
+		return decryptRsa(publicKey, data);
+	}
+
+	/**
+	 * 公钥加密
+	 *
+	 * @param key  Key
+	 * @param data 待加密的内容
+	 * @return 加密后的内容
+	 */
+	public static byte[] encryptRsa(Key key, byte[] data) {
+		int blockSize = ((RSAKey) key).getModulus().bitLength() / 8 - 11;
+		return rsa(key, data, blockSize, Cipher.ENCRYPT_MODE, RSA_PADDING);
+	}
+
+	/**
+	 * 公钥加密 (OAEP)
+	 *
+	 * @param key  Key
+	 * @param data 待加密的内容
+	 * @return 加密后的内容
+	 */
+	public static byte[] encryptRsaOaep(Key key, byte[] data) {
+		// SHA-256 (32 bytes) * 2 + 2 = 66
+		int blockSize = ((RSAKey) key).getModulus().bitLength() / 8 - 66;
+		return rsa(key, data, blockSize, Cipher.ENCRYPT_MODE, RSA_OAEP_PADDING);
+	}
+
+	/**
+	 * 解密
+	 *
+	 * @param key  Key
+	 * @param data 数据
+	 * @return 解密后的数据
+	 */
+	public static byte[] decryptRsa(Key key, byte[] data) {
+		int blockSize = ((RSAKey) key).getModulus().bitLength() / 8;
+		return rsa(key, data, blockSize, Cipher.DECRYPT_MODE, RSA_PADDING);
+	}
+
+	/**
+	 * 解密 (OAEP)
+	 *
+	 * @param key  Key
+	 * @param data 数据
+	 * @return 解密后的数据
+	 */
+	public static byte[] decryptRsaOaep(Key key, byte[] data) {
+		int blockSize = ((RSAKey) key).getModulus().bitLength() / 8;
+		return rsa(key, data, blockSize, Cipher.DECRYPT_MODE, RSA_OAEP_PADDING);
 	}
 
 	/**
 	 * rsa 加、解密
 	 *
-	 * @param key  key
-	 * @param data 数据
-	 * @param mode 模式
+	 * @param key          key
+	 * @param data         数据
+	 * @param maxBlockSize maxBlockSize
+	 * @param mode         模式
+	 * @param padding      padding
 	 * @return 解密后的数据
 	 */
-	private static byte[] rsa(Key key, byte[] data, int mode) {
+	private static byte[] rsa(Key key, byte[] data, int maxBlockSize, int mode, String padding) {
+		// 数据长度
+		final int dataLength = data.length;
 		try {
-			Cipher cipher = Cipher.getInstance(RSA_PADDING);
+			Cipher cipher = Cipher.getInstance(padding);
 			cipher.init(mode, key);
-			return cipher.doFinal(data);
+			// 不需要分段
+			if (dataLength <= maxBlockSize) {
+				return cipher.doFinal(data, 0, dataLength);
+			}
+			final ByteArrayOutputStream out = new ByteArrayOutputStream();
+			int offSet = 0;
+			// 剩余长度
+			int remainLength = dataLength;
+			int blockSize;
+			// 对数据分段处理
+			while (remainLength > 0) {
+				blockSize = Math.min(remainLength, maxBlockSize);
+				out.write(cipher.doFinal(data, offSet, blockSize));
+				offSet += blockSize;
+				remainLength = dataLength - offSet;
+			}
+			return out.toByteArray();
 		} catch (Exception e) {
 			throw Exceptions.unchecked(e);
 		}
@@ -348,7 +418,7 @@ public class RsaUtil {
 	 * @return 解密后的数据
 	 */
 	public static byte[] decryptByPublicKeyFromBase64(PublicKey publicKey, byte[] base64Data) {
-		return decryptByPublicKey(publicKey, Base64Utils.decode(base64Data));
+		return decryptByPublicKey(publicKey, Base64Util.decode(base64Data));
 	}
 
 	/**
@@ -374,7 +444,7 @@ public class RsaUtil {
 		if (StringUtil.isBlank(base64Data)) {
 			return null;
 		}
-		return new String(decrypt(privateKey, Base64Utils.decodeFromString(base64Data)), Charsets.UTF_8);
+		return new String(decrypt(privateKey, Base64Util.decodeFromString(base64Data)), StandardCharsets.UTF_8);
 	}
 
 	/**
@@ -397,7 +467,7 @@ public class RsaUtil {
 	 * @return 解密后的数据
 	 */
 	public static byte[] decryptFromBase64(String base64PrivateKey, byte[] base64Data) {
-		return decrypt(base64PrivateKey, Base64Utils.decode(base64Data));
+		return decrypt(base64PrivateKey, Base64Util.decode(base64Data));
 	}
 
 	/**
@@ -412,7 +482,7 @@ public class RsaUtil {
 		if (StringUtil.isBlank(base64Data)) {
 			return null;
 		}
-		return new String(decryptByPublicKey(publicKey, Base64Utils.decodeFromString(base64Data)), Charsets.UTF_8);
+		return new String(decryptByPublicKey(publicKey, Base64Util.decodeFromString(base64Data)), StandardCharsets.UTF_8);
 	}
 
 	/**

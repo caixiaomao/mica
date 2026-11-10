@@ -48,7 +48,7 @@ public class RedisRateLimiterClient implements RateLimiterClient {
 	/**
 	 * redisScript
 	 */
-	private final RedisScript<List<Long>> script;
+	private final RedisScript<Long> script;
 	/**
 	 * env
 	 */
@@ -60,19 +60,11 @@ public class RedisRateLimiterClient implements RateLimiterClient {
 		String redisKeyBuilder = REDIS_KEY_PREFIX +
 			getApplicationName(environment) + CharPool.COLON + key;
 		List<String> keys = Collections.singletonList(redisKeyBuilder);
-		// 毫秒，考虑主从策略和脚本回放机制，这个time由客户端获取传入
-		long now = System.currentTimeMillis();
-		// 转为毫秒，pexpire
+		// 转为毫秒
 		long ttlMillis = timeUnit.toMillis(ttl);
 		// 执行命令
-		List<Long> results = this.redisTemplate.execute(this.script, keys, max + "", ttlMillis + "", now + "");
-		// 结果为空返回失败
-		if (results == null || results.isEmpty()) {
-			return false;
-		}
-		// 判断返回成功
-		Long result = results.get(0);
-		return result != FAIL_CODE;
+		Long result = this.redisTemplate.execute(this.script, keys, Long.toString(max), Long.toString(ttlMillis));
+		return result != null && result != FAIL_CODE;
 	}
 
 	private static String getApplicationName(Environment environment) {

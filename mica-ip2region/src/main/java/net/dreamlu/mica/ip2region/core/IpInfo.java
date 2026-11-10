@@ -34,17 +34,9 @@ import java.util.Set;
 public class IpInfo implements Serializable {
 
 	/**
-	 * 城市id
-	 */
-	private Integer cityId;
-	/**
 	 * 国家
 	 */
 	private String country;
-	/**
-	 * 区域
-	 */
-	private String region;
 	/**
 	 * 省
 	 */
@@ -58,9 +50,10 @@ public class IpInfo implements Serializable {
 	 */
 	private String isp;
 	/**
-	 * region ptr in the db file
+	 * 国际标准化组织（ISO）制定的两字母国家/地区代码
 	 */
-	private int dataPtr;
+	private String isoCode;
+
 	/**
 	 * 拼接完整的地址
 	 *
@@ -69,12 +62,12 @@ public class IpInfo implements Serializable {
 	public String getAddress() {
 		Set<String> regionSet = new LinkedHashSet<>();
 		regionSet.add(country);
-		regionSet.add(region);
 		regionSet.add(province);
 		regionSet.add(city);
 		regionSet.removeIf(Objects::isNull);
 		return StringUtil.join(regionSet, StringPool.EMPTY);
 	}
+
 	/**
 	 * 拼接完整的地址
 	 *
@@ -83,11 +76,11 @@ public class IpInfo implements Serializable {
 	public String getAddressAndIsp() {
 		Set<String> regionSet = new LinkedHashSet<>();
 		regionSet.add(country);
-		regionSet.add(region);
 		regionSet.add(province);
 		regionSet.add(city);
 		regionSet.add(isp);
 		regionSet.removeIf(Objects::isNull);
 		return StringUtil.join(regionSet, StringPool.SPACE);
 	}
+
 }

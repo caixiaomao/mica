@@ -16,14 +16,13 @@
 
 package net.dreamlu.mica.http;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import net.dreamlu.mica.core.utils.Exceptions;
 import net.dreamlu.mica.core.utils.JsonUtil;
 import okhttp3.*;
-import okhttp3.internal.Util;
+import org.jspecify.annotations.Nullable;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 
-import javax.annotation.Nullable;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -190,6 +189,6 @@ public class HttpResponse implements ResponseSpec, Closeable {
 
 	@Override
 	public void close() throws IOException {
-		Util.closeQuietly(this.body);
+		Util.closeQuietly(this.response);
 	}
 }

@@ -16,18 +16,17 @@
 
 package net.dreamlu.mica.caffeine.config;
 
-import com.github.benmanes.caffeine.cache.CacheLoader;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import net.dreamlu.mica.core.utils.ReflectUtil;
+import com.github.benmanes.caffeine.cache.*;
 import net.dreamlu.mica.core.utils.StringPool;
+import org.jspecify.annotations.Nullable;
 import org.springframework.boot.convert.DurationStyle;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
-import org.springframework.lang.Nullable;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.util.Objects;
 
 /**
  * caffeine 缓存自动配置超时时间
@@ -35,15 +34,22 @@ import java.util.Objects;
  * @author L.cm
  */
 public class CaffeineAutoCacheManager extends CaffeineCacheManager {
-	private static final Field CACHE_BUILDER_FIELD;
-	private static final Field CACHE_LOADER_FIELD;
+	private static final VarHandle CACHE_LOADER_VAR_HANDLE;
 
 	static {
-		CACHE_BUILDER_FIELD = Objects.requireNonNull(ReflectUtil.getField(CaffeineCacheManager.class, "cacheBuilder"));
-		CACHE_BUILDER_FIELD.setAccessible(true);
-		CACHE_LOADER_FIELD = Objects.requireNonNull(ReflectUtil.getField(CaffeineCacheManager.class, "cacheLoader"));
-		CACHE_LOADER_FIELD.setAccessible(true);
+		try {
+			// 1. 获取 MethodHandles.Lookup 实例（需要模块访问权限）
+			MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(CaffeineCacheManager.class, MethodHandles.lookup());
+			// 2. 找到字段并创建 VarHandle
+			Field cacheLoaderField = CaffeineCacheManager.class.getDeclaredField("cacheLoader");
+			CACHE_LOADER_VAR_HANDLE = lookup.unreflectVarHandle(cacheLoaderField);
+		} catch (IllegalAccessException | NoSuchFieldException e) {
+			throw new IllegalStateException("Failed to initialize CaffeineAutoCacheManager", e);
+		}
 	}
+
+	@Nullable
+	private CaffeineSpec caffeineSpec = null;
 
 	public CaffeineAutoCacheManager() {
 		super();
@@ -53,23 +59,27 @@ public class CaffeineAutoCacheManager extends CaffeineCacheManager {
 		super(cacheNames);
 	}
 
-	@SuppressWarnings("unchecked")
-	protected Caffeine<Object, Object> getCacheBuilder() {
-		try {
-			return (Caffeine<Object, Object>) CACHE_BUILDER_FIELD.get(this);
-		} catch (IllegalAccessException e) {
-			throw new IllegalArgumentException(e);
-		}
-	}
-
 	@Nullable
 	@SuppressWarnings("unchecked")
-	protected CacheLoader<Object, Object> getCacheLoader() {
-		try {
-			return (CacheLoader<Object, Object>) CACHE_LOADER_FIELD.get(this);
-		} catch (IllegalAccessException e) {
-			return null;
-		}
+	protected AsyncCacheLoader<Object, Object> getCacheLoader() {
+		return (AsyncCacheLoader<Object, Object>) CACHE_LOADER_VAR_HANDLE.get(this);
+	}
+
+	@Override
+	public void setCaffeine(Caffeine<Object, Object> caffeine) {
+		throw new IllegalArgumentException("mica-caffeine not support customization Caffeine bean，you can customize CaffeineSpec bean.");
+	}
+
+	@Override
+	public void setCaffeineSpec(CaffeineSpec caffeineSpec) {
+		super.setCaffeineSpec(caffeineSpec);
+		this.caffeineSpec = caffeineSpec;
+	}
+
+	@Override
+	public void setCacheSpecification(String cacheSpecification) {
+		super.setCacheSpecification(cacheSpecification);
+		this.caffeineSpec = CaffeineSpec.parse(cacheSpecification);
 	}
 
 	/**
@@ -86,15 +96,35 @@ public class CaffeineAutoCacheManager extends CaffeineCacheManager {
 		if (cacheArray.length < 2) {
 			return super.createNativeCaffeineCache(name);
 		}
-		// 转换时间，支持时间单位例如：300ms，第二个参数是默认单位
-		Duration duration = DurationStyle.detectAndParse(cacheArray[1], ChronoUnit.SECONDS);
-		Caffeine<Object, Object> cacheBuilder = getCacheBuilder();
-		CacheLoader<Object, Object> cacheLoader = getCacheLoader();
+		Caffeine<Object, Object> cacheBuilder = getCaffeine(cacheArray);
+		AsyncCacheLoader<Object, Object> cacheLoader = getCacheLoader();
 		if (cacheLoader == null) {
-			return cacheBuilder.expireAfterAccess(duration).build();
+			return cacheBuilder.build();
+		} else if (cacheLoader instanceof CacheLoader<Object, Object> regularCacheLoader) {
+			return cacheBuilder.build(regularCacheLoader);
 		} else {
-			return cacheBuilder.expireAfterAccess(duration).build(cacheLoader);
+			throw new IllegalStateException("Cannot create regular Caffeine Cache with async-only cache loader: " + cacheLoader);
 		}
 	}
 
+	@Override
+	protected AsyncCache<Object, Object> createAsyncCaffeineCache(String name) {
+		String[] cacheArray = name.split(StringPool.HASH);
+		if (cacheArray.length < 2) {
+			return super.createAsyncCaffeineCache(name);
+		}
+		Caffeine<Object, Object> cacheBuilder = getCaffeine(cacheArray);
+		AsyncCacheLoader<Object, Object> cacheLoader = getCacheLoader();
+		return cacheLoader == null ? cacheBuilder.buildAsync() : cacheBuilder.buildAsync(cacheLoader) ;
+	}
+
+	private Caffeine<Object, Object> getCaffeine(String[] cacheArray) {
+		// 转换时间，支持时间单位例如：300ms，第二个参数是默认单位
+		Duration duration = DurationStyle.detectAndParse(cacheArray[1], ChronoUnit.SECONDS);
+		if (this.caffeineSpec == null) {
+			return Caffeine.newBuilder().expireAfterAccess(duration);
+		} else {
+			return Caffeine.from(caffeineSpec).expireAfterAccess(duration);
+		}
+	}
 }

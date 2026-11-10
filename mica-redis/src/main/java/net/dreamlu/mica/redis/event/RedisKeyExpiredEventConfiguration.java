@@ -16,11 +16,10 @@
 
 package net.dreamlu.mica.redis.event;
 
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.listener.KeyExpirationEventMessageListener;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
@@ -29,17 +28,9 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
  *
  * @author L.cm
  */
-@Configuration(proxyBeanMethods = false)
+@AutoConfiguration
 @ConditionalOnProperty(value = "mica.redis.key-expired-event.enable")
 public class RedisKeyExpiredEventConfiguration {
-
-	@Bean
-	@ConditionalOnMissingBean
-	public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory connectionFactory) {
-		RedisMessageListenerContainer container = new RedisMessageListenerContainer();
-		container.setConnectionFactory(connectionFactory);
-		return container;
-	}
 
 	@Bean
 	@ConditionalOnMissingBean

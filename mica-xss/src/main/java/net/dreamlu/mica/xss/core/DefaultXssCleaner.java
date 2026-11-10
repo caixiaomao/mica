@@ -17,16 +17,16 @@
 package net.dreamlu.mica.xss.core;
 
 import lombok.RequiredArgsConstructor;
-import net.dreamlu.mica.core.utils.Charsets;
-import net.dreamlu.mica.core.utils.StringUtil;
 import net.dreamlu.mica.xss.config.MicaXssProperties;
 import net.dreamlu.mica.xss.config.MicaXssProperties.Mode;
 import net.dreamlu.mica.xss.utils.XssUtil;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Entities;
-import org.jsoup.safety.Cleaner;
+import org.springframework.util.StringUtils;
 import org.springframework.web.util.HtmlUtils;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * 默认的 xss 清理器
@@ -37,34 +37,39 @@ import org.springframework.web.util.HtmlUtils;
 public class DefaultXssCleaner implements XssCleaner {
 	private final MicaXssProperties properties;
 
+	private static Document.OutputSettings getOutputSettings(MicaXssProperties properties) {
+		return new Document.OutputSettings()
+			// 2. 转义，没找到关闭的方法，目前这个规则最少
+			.escapeMode(Entities.EscapeMode.xhtml)
+			// 3. 保留换行
+			.prettyPrint(properties.isPrettyPrint());
+	}
+
 	@Override
-	public String clean(String bodyHtml) {
+	public String clean(String name, String bodyHtml, XssType type) {
 		// 1. 为空直接返回
-		if (StringUtil.isBlank(bodyHtml)) {
+		if (!StringUtils.hasText(bodyHtml)) {
 			return bodyHtml;
 		}
 		Mode mode = properties.getMode();
-		if (Mode.escape == mode) {
+		if (Mode.ESCAPE == mode) {
 			// html 转义
-			return HtmlUtils.htmlEscape(bodyHtml, Charsets.UTF_8_NAME);
-		} else {
-			// jsoup html 清理
-			Document.OutputSettings outputSettings = new Document.OutputSettings()
-				// 2. 转义，没找到关闭的方法，目前这个规则最少
-				.escapeMode(Entities.EscapeMode.xhtml)
-				// 3. 保留换行
-				.prettyPrint(properties.isPrettyPrint());
-			Document dirty = Jsoup.parseBodyFragment(bodyHtml, "");
-			Cleaner cleaner = new Cleaner(XssUtil.WHITE_LIST);
-			Document clean = cleaner.clean(dirty);
-			clean.outputSettings(outputSettings);
-			// 4. 清理后的 html
-			String escapedHtml = clean.body().html();
-			if (properties.isEnableEscape()) {
-				return escapedHtml;
+			return HtmlUtils.htmlEscape(bodyHtml, StandardCharsets.UTF_8.name());
+		} else if (Mode.VALIDATE == mode) {
+			// 校验
+			if (Jsoup.isValid(bodyHtml, XssUtil.WHITE_LIST)) {
+				return bodyHtml;
 			}
-			// 5. 反转义
-			return Entities.unescape(escapedHtml);
+			throw type.getXssException(name, bodyHtml);
+		} else {
+			// 4. 清理后的 html，jsoup 已完成白名单过滤与转义
+			String cleanedHtml = Jsoup.clean(bodyHtml, "", XssUtil.WHITE_LIST, getOutputSettings(properties));
+			if (properties.isEnableEscape()) {
+				return cleanedHtml;
+			}
+			// 5. 反转义，但不会还原出能生成标签或属性的字符
+			// 全量反转义会把实体编码的标签还原成真实标签，也会把属性值中的双引号还原出来导致属性逃逸
+			return XssUtil.unescapeEntities(cleanedHtml);
 		}
 	}
 

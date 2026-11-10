@@ -20,15 +20,15 @@ import net.dreamlu.mica.core.utils.Exceptions;
 import okhttp3.Headers;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
-import okhttp3.internal.Util;
 import okio.Buffer;
+import org.jspecify.annotations.Nullable;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * 表单构造器
@@ -62,16 +62,16 @@ public class MultipartFormBuilder {
 	}
 
 	public MultipartFormBuilder add(String name, @Nullable String filename, File file) {
-		RequestBody fileBody = RequestBody.create(null, file);
+		RequestBody fileBody = RequestBody.create(file, null);
 		return add(name, filename, fileBody);
 	}
 
-	public MultipartFormBuilder add(String name, @Nonnull String filename, byte[] bytes) {
-		RequestBody fileBody = RequestBody.create(null, bytes);
+	public MultipartFormBuilder add(String name, String filename, byte[] bytes) {
+		RequestBody fileBody = RequestBody.create(bytes, null);
 		return add(name, filename, fileBody);
 	}
 
-	public MultipartFormBuilder add(String name, @Nonnull String filename, InputStream stream) {
+	public MultipartFormBuilder add(String name, String filename, InputStream stream) {
 		try (Buffer buffer = new Buffer()) {
 			buffer.readFrom(stream);
 			return add(name, filename, buffer.readByteArray());
@@ -102,11 +102,20 @@ public class MultipartFormBuilder {
 		return this;
 	}
 
+	public MultipartFormBuilder addList(List<MultipartBody.Part> partList) {
+		for (MultipartBody.Part part : partList) {
+			this.formBuilder.addPart(part);
+		}
+		return this;
+	}
+
+	public MultipartFormBuilder add(Consumer<MultipartBody.Builder> consumer) {
+		consumer.accept(this.formBuilder);
+		return this;
+	}
+
 	public HttpRequest build() {
-		formBuilder.setType(MultipartBody.FORM);
-		MultipartBody formBody = formBuilder.build();
-		this.request.multipartForm(formBody);
-		return this.request;
+		return this.request.multipartForm(this.formBuilder.setType(MultipartBody.FORM).build());
 	}
 
 	public Exchange execute() {

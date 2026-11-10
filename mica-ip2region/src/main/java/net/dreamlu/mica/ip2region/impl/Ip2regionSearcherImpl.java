@@ -17,14 +17,18 @@
 package net.dreamlu.mica.ip2region.impl;
 
 import lombok.RequiredArgsConstructor;
-import net.dreamlu.mica.core.utils.Exceptions;
+import lombok.extern.slf4j.Slf4j;
+import net.dreamlu.mica.ip2region.config.Config;
 import net.dreamlu.mica.ip2region.config.Ip2regionProperties;
-import net.dreamlu.mica.ip2region.core.*;
+import net.dreamlu.mica.ip2region.core.Ip2Region;
+import net.dreamlu.mica.ip2region.core.Ip2regionSearcher;
+import net.dreamlu.mica.ip2region.core.IpInfo;
 import net.dreamlu.mica.ip2region.utils.IpInfoUtil;
+import net.dreamlu.mica.ip2region.xdb.InetAddressException;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
-import org.springframework.util.StreamUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,82 +38,52 @@ import java.io.InputStream;
  *
  * @author dream.lu
  */
+@Slf4j
 @RequiredArgsConstructor
-public class Ip2regionSearcherImpl implements InitializingBean, Ip2regionSearcher {
+public class Ip2regionSearcherImpl implements InitializingBean, DisposableBean, Ip2regionSearcher {
 	private final ResourceLoader resourceLoader;
 	private final Ip2regionProperties properties;
-	private DbSearcher searcher;
-
-	@Override
-	public void afterPropertiesSet() throws Exception {
-		DbConfig config = new DbConfig();
-		Resource resource = resourceLoader.getResource(properties.getDbFileLocation());
-		try (InputStream inputStream = resource.getInputStream()) {
-			this.searcher = new DbSearcher(config, new ByteArrayDBReader(StreamUtils.copyToByteArray(inputStream)));
-		}
-	}
-
-	@Override
-	public IpInfo memorySearch(long ip) {
-		try {
-			return IpInfoUtil.toIpInfo(searcher.memorySearch(ip));
-		} catch (IOException e) {
-			throw Exceptions.unchecked(e);
-		}
-	}
+	/**
+	 * ip2region 实例
+	 */
+	private Ip2Region ip2Region;
 
 	@Override
 	public IpInfo memorySearch(String ip) {
 		try {
-			return IpInfoUtil.toIpInfo(searcher.memorySearch(ip));
-		} catch (IOException e) {
-			throw Exceptions.unchecked(e);
+			String region = ip2Region.search(ip);
+			return IpInfoUtil.toIpInfo(region);
+		} catch (InetAddressException | IOException | InterruptedException e) {
+			log.error("ip2region memorySearch error, ip: {}", ip, e);
+			return null;
 		}
 	}
 
 	@Override
-	public IpInfo getByIndexPtr(long ptr) {
-		try {
-			return IpInfoUtil.toIpInfo(searcher.getByIndexPtr(ptr));
-		} catch (IOException e) {
-			throw Exceptions.unchecked(e);
+	public void afterPropertiesSet() throws Exception {
+		Resource ipv4Resource = resourceLoader.getResource(properties.getIpv4xdbFileLocation());
+		Resource ipV6Resource = resourceLoader.getResource(properties.getIpv6xdbFileLocation());
+		try (
+			InputStream v4InputStream = ipv4Resource.getInputStream();
+			InputStream v6InputStream = ipV6Resource.getInputStream()
+		) {
+			Config v4Config = Config.custom()
+				.setXdbInputStream(v4InputStream)
+				.setCachePolicy(Config.BufferCache)
+				.setSearchers(10)
+				.asV4();
+			Config v6Config = Config.custom()
+				.setXdbInputStream(v6InputStream)
+				.setCachePolicy(Config.BufferCache)
+				.setSearchers(10)
+				.asV6();
+			ip2Region = Ip2Region.create(v4Config, v6Config);
 		}
 	}
 
 	@Override
-	public IpInfo btreeSearch(long ip) {
-		try {
-			return IpInfoUtil.toIpInfo(searcher.btreeSearch(ip));
-		} catch (IOException e) {
-			throw Exceptions.unchecked(e);
-		}
-	}
-
-	@Override
-	public IpInfo btreeSearch(String ip) {
-		try {
-			return IpInfoUtil.toIpInfo(searcher.btreeSearch(ip));
-		} catch (IOException e) {
-			throw Exceptions.unchecked(e);
-		}
-	}
-
-	@Override
-	public IpInfo binarySearch(long ip) {
-		try {
-			return IpInfoUtil.toIpInfo(searcher.binarySearch(ip));
-		} catch (IOException e) {
-			throw Exceptions.unchecked(e);
-		}
-	}
-
-	@Override
-	public IpInfo binarySearch(String ip) {
-		try {
-			return IpInfoUtil.toIpInfo(searcher.binarySearch(ip));
-		} catch (IOException e) {
-			throw Exceptions.unchecked(e);
-		}
+	public void destroy() throws Exception {
+		ip2Region.close();
 	}
 
 }

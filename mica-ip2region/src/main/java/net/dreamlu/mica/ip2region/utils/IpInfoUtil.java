@@ -17,11 +17,11 @@
 package net.dreamlu.mica.ip2region.utils;
 
 import net.dreamlu.mica.core.utils.StringPool;
-import net.dreamlu.mica.ip2region.core.DataBlock;
 import net.dreamlu.mica.ip2region.core.IpInfo;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Arrays;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -35,29 +35,25 @@ public class IpInfoUtil {
 	/**
 	 * 将 DataBlock 转化为 IpInfo
 	 *
-	 * @param dataBlock DataBlock
+	 * @param region region
 	 * @return IpInfo
 	 */
 	@Nullable
-	public static IpInfo toIpInfo(@Nullable DataBlock dataBlock) {
-		if (dataBlock == null) {
+	public static IpInfo toIpInfo(@Nullable String region) {
+		if (region == null) {
 			return null;
 		}
 		IpInfo ipInfo = new IpInfo();
-		int cityId = dataBlock.getCityId();
-		ipInfo.setCityId(cityId == 0 ? null : cityId);
-		ipInfo.setDataPtr(dataBlock.getDataPtr());
-		String region = dataBlock.getRegion();
-		String[] splitInfos = SPLIT_PATTERN.split(region);
+		String[] splitInfoArr = SPLIT_PATTERN.split(region);
 		// 补齐5位
-		if (splitInfos.length < 5) {
-			splitInfos = Arrays.copyOf(splitInfos, 5);
+		if (splitInfoArr.length < 5) {
+			splitInfoArr = Arrays.copyOf(splitInfoArr, 5);
 		}
-		ipInfo.setCountry(filterZero(splitInfos[0]));
-		ipInfo.setRegion(filterZero(splitInfos[1]));
-		ipInfo.setProvince(filterZero(splitInfos[2]));
-		ipInfo.setCity(filterZero(splitInfos[3]));
-		ipInfo.setIsp(filterZero(splitInfos[4]));
+		ipInfo.setCountry(filterZero(splitInfoArr[0]));
+		ipInfo.setProvince(filterZero(splitInfoArr[1]));
+		ipInfo.setCity(filterZero(splitInfoArr[2]));
+		ipInfo.setIsp(filterZero(splitInfoArr[3]));
+		ipInfo.setIsoCode(filterZero(splitInfoArr[4]));
 		return ipInfo;
 	}
 
@@ -74,5 +70,20 @@ public class IpInfoUtil {
 			return null;
 		}
 		return info;
+	}
+
+	/**
+	 * 读取 IpInfo
+	 *
+	 * @param ipInfo   IpInfo
+	 * @param function Function
+	 * @return info
+	 */
+	@Nullable
+	public static String readInfo(@Nullable IpInfo ipInfo, Function<IpInfo, String> function) {
+		if (ipInfo == null) {
+			return null;
+		}
+		return function.apply(ipInfo);
 	}
 }

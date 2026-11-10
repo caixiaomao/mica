@@ -17,12 +17,14 @@
 package net.dreamlu.mica.core.utils;
 
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -30,7 +32,6 @@ import java.util.stream.Collectors;
  *
  * @author L.cm
  */
-@UtilityClass
 @SuppressWarnings("unchecked")
 public class CollectionUtil extends org.springframework.util.CollectionUtils {
 
@@ -42,7 +43,7 @@ public class CollectionUtil extends org.springframework.util.CollectionUtils {
 	 * @return whether the given Collection is not empty
 	 */
 	public static boolean isNotEmpty(@Nullable Collection<?> collection) {
-		return !CollectionUtil.isEmpty(collection);
+		return !CollectionUtils.isEmpty(collection);
 	}
 
 	/**
@@ -53,7 +54,7 @@ public class CollectionUtil extends org.springframework.util.CollectionUtils {
 	 * @return whether the given Map is not empty
 	 */
 	public static boolean isNotEmpty(@Nullable Map<?, ?> map) {
-		return !CollectionUtil.isEmpty(map);
+		return !CollectionUtils.isEmpty(map);
 	}
 
 	/**
@@ -68,7 +69,7 @@ public class CollectionUtil extends org.springframework.util.CollectionUtils {
 		if (array == null) {
 			return false;
 		}
-		return Arrays.stream(array).anyMatch(x -> ObjectUtil.nullSafeEquals(x, element));
+		return Arrays.stream(array).anyMatch(x -> ObjectUtils.nullSafeEquals(x, element));
 	}
 
 	/**
@@ -118,7 +119,7 @@ public class CollectionUtil extends org.springframework.util.CollectionUtils {
 	 */
 	@SafeVarargs
 	public static <E> List<E> ofImmutableList(E... es) {
-		return Arrays.stream(Objects.requireNonNull(es, "args es is null.")).collect(Collectors.toList());
+		return Arrays.stream(Objects.requireNonNull(es, "args es is null.")).toList();
 	}
 
 	/**
@@ -161,6 +162,20 @@ public class CollectionUtil extends org.springframework.util.CollectionUtils {
 			keyValueMap.put((K) key, (V) value);
 		}
 		return keyValueMap;
+	}
+
+	/**
+	 * A temporary workaround for Java 8 specific performance issue JDK-8161372 .<br>
+	 * This class should be removed once we drop Java 8 support.
+	 *
+	 * @see <a href="https://bugs.openjdk.java.net/browse/JDK-8161372">https://bugs.openjdk.java.net/browse/JDK-8161372</a>
+	 */
+	public static <K, V> V computeIfAbsent(Map<K, V> map, K key, Function<K, V> mappingFunction) {
+		V value = map.get(key);
+		if (value != null) {
+			return value;
+		}
+		return map.computeIfAbsent(key, mappingFunction);
 	}
 
 	/**

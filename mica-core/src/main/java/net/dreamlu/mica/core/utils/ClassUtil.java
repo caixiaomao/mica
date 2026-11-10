@@ -16,14 +16,14 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.BridgeMethodResolver;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.core.annotation.SynthesizingMethodParameter;
-import org.springframework.lang.Nullable;
 import org.springframework.web.method.HandlerMethod;
 
 import java.lang.annotation.Annotation;
@@ -35,7 +35,6 @@ import java.lang.reflect.Method;
  *
  * @author L.cm
  */
-@UtilityClass
 public class ClassUtil extends org.springframework.util.ClassUtils {
 	private static final ParameterNameDiscoverer PARAMETER_NAME_DISCOVERER = new DefaultParameterNameDiscoverer();
 
@@ -66,19 +65,20 @@ public class ClassUtil extends org.springframework.util.ClassUtils {
 	}
 
 	/**
-	 * 获取Annotation
+	 * 获取Annotation，先找方法，没有则再找方法上的类
 	 *
 	 * @param method         Method
 	 * @param annotationType 注解类
 	 * @param <A>            泛型标记
-	 * @return {Annotation}
+	 * @return {@link Annotation}
+	 * @see MergedAnnotations.SearchStrategy#TYPE_HIERARCHY
 	 */
 	@Nullable
 	public static <A extends Annotation> A getAnnotation(Method method, Class<A> annotationType) {
 		Class<?> targetClass = method.getDeclaringClass();
 		// The method may be on an interface, but we need attributes from the target class.
 		// If the target class is null, the method will be unchanged.
-		Method specificMethod = ClassUtil.getMostSpecificMethod(method, targetClass);
+		Method specificMethod = getMostSpecificMethod(method, targetClass);
 		// If we are dealing with method with generic parameters, find the original method.
 		specificMethod = BridgeMethodResolver.findBridgedMethod(specificMethod);
 		// 先找方法，再找方法上的类
@@ -91,12 +91,13 @@ public class ClassUtil extends org.springframework.util.ClassUtils {
 	}
 
 	/**
-	 * 获取Annotation
+	 * 获取Annotation，先找方法，没有则再找方法上的类
 	 *
 	 * @param handlerMethod  HandlerMethod
 	 * @param annotationType 注解类
 	 * @param <A>            泛型标记
-	 * @return {Annotation}
+	 * @return {@link Annotation}
+	 * @see MergedAnnotations.SearchStrategy#TYPE_HIERARCHY
 	 */
 	@Nullable
 	public static <A extends Annotation> A getAnnotation(HandlerMethod handlerMethod, Class<A> annotationType) {
@@ -111,12 +112,13 @@ public class ClassUtil extends org.springframework.util.ClassUtils {
 	}
 
 	/**
-	 * 判断是否有注解 Annotation
+	 * 判断是否有注解 Annotation，先找方法，没有则再找方法上的类
 	 *
 	 * @param method         Method
 	 * @param annotationType 注解类
 	 * @param <A>            泛型标记
-	 * @return {boolean}
+	 * @return {@code boolean}
+	 * @see MergedAnnotations.SearchStrategy#TYPE_HIERARCHY
 	 */
 	public static <A extends Annotation> boolean isAnnotated(Method method, Class<A> annotationType) {
 		// 先找方法，再找方法上的类

@@ -16,6 +16,8 @@
 
 package net.dreamlu.mica.core.utils;
 
+import org.springframework.util.StringUtils;
+
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
@@ -41,7 +43,7 @@ public class INetUtil {
 			InetAddress address = InetAddress.getLocalHost();
 			// force a best effort reverse DNS lookup
 			hostname = address.getHostName();
-			if (!StringUtil.hasText(hostname)) {
+			if (!StringUtils.hasText(hostname)) {
 				hostname = address.toString();
 			}
 		} catch (UnknownHostException ignore) {
@@ -61,7 +63,7 @@ public class INetUtil {
 			InetAddress address = INetUtil.getLocalHostLanAddress();
 			// force a best effort reverse DNS lookup
 			hostAddress = address.getHostAddress();
-			if (!StringUtil.hasText(hostAddress)) {
+			if (!StringUtils.hasText(hostAddress)) {
 				hostAddress = address.toString();
 			}
 		} catch (UnknownHostException ignore) {

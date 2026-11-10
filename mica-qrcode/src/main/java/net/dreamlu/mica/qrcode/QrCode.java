@@ -39,7 +39,9 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.EnumMap;
 import java.util.Hashtable;
+import java.util.Map;
 
 /**
  * QRCode 读写，基于 nutz-plugins-qrcode 调整，简化使用
@@ -47,7 +49,7 @@ import java.util.Hashtable;
  * @author ywjno(ywjno.dev @ gmail.com)
  * @author L.cm
  */
-public final class QrCode {
+public class QrCode {
 
 	/**
 	 * 二维码内容
@@ -88,7 +90,7 @@ public final class QrCode {
 	/**
 	 * 提供给编码器额外的参数
 	 */
-	private final Hashtable<EncodeHintType, Object> hints;
+	private final Map<EncodeHintType, Object> hints;
 	/**
 	 * 需要添加的图片
 	 */
@@ -169,25 +171,26 @@ public final class QrCode {
 	 */
 	public QrCode errorCorrectionLevel(ErrorCorrectionLevel errorCorrectionLevel) {
 		switch (errorCorrectionLevel) {
-			case L:
+			case L -> {
 				this.errorCorrectionLevel = errorCorrectionLevel;
 				this.errorCorrectionLevelValue = 0.07;
-				break;
-			case M:
+			}
+			case M -> {
 				this.errorCorrectionLevel = errorCorrectionLevel;
 				this.errorCorrectionLevelValue = 0.15;
-				break;
-			case Q:
+			}
+			case Q -> {
 				this.errorCorrectionLevel = errorCorrectionLevel;
 				this.errorCorrectionLevelValue = 0.25;
-				break;
-			case H:
+			}
+			case H -> {
 				this.errorCorrectionLevel = errorCorrectionLevel;
 				this.errorCorrectionLevelValue = 0.3;
-				break;
-			default:
+			}
+			default -> {
 				this.errorCorrectionLevel = ErrorCorrectionLevel.M;
 				this.errorCorrectionLevelValue = 0.15;
+			}
 		}
 		return this;
 	}
@@ -273,7 +276,7 @@ public final class QrCode {
 	 *
 	 * @return 提供给编码器额外的参数
 	 */
-	public Hashtable<EncodeHintType, ?> getHints() {
+	public Map<EncodeHintType, ?> getHints() {
 		hints.clear();
 		hints.put(EncodeHintType.ERROR_CORRECTION, this.errorCorrectionLevel);
 		hints.put(EncodeHintType.CHARACTER_SET, this.encode);
@@ -402,10 +405,9 @@ public final class QrCode {
 	 * @return QRCode 的图像对象
 	 */
 	public BufferedImage toImage() {
-		String text = new String(content.getBytes(this.encode));
 		BitMatrix matrix;
 		try {
-			matrix = new QRCodeWriter().encode(text,
+			matrix = new QRCodeWriter().encode(content,
 				BarcodeFormat.QR_CODE,
 				this.size,
 				this.size,
@@ -469,13 +471,117 @@ public final class QrCode {
 	 * @return QRCode 中的内容
 	 */
 	public static String read(BufferedImage qrCodeImage) {
+		return read(qrCodeImage, (Map<DecodeHintType,?>) null);
+	}
+
+	/**
+	 * 从指定的 QRCode 图片文件中解析出其内容。
+	 *
+	 * @param qrCodeFile QRCode 文件
+	 * @return QRCode 中的内容
+	 */
+	public static String read(String qrCodeFile, Charset encode) {
+		return read(ImageUtil.read(qrCodeFile), encode);
+	}
+
+	/**
+	 * 从指定的 QRCode 图片文件中解析出其内容。
+	 *
+	 * @param qrCodeFile QRCode 图片文件
+	 * @return QRCode 中的内容
+	 */
+	public static String read(File qrCodeFile, Charset encode) {
+		return read(ImageUtil.read(qrCodeFile), encode);
+	}
+
+	/**
+	 * 从指定的 QRCode 图片链接中解析出其内容。
+	 *
+	 * @param qrCodeUrl QRCode 图片链接
+	 * @return QRCode 中的内容
+	 */
+	public static String read(URL qrCodeUrl, Charset encode) {
+		return read(ImageUtil.read(qrCodeUrl), encode);
+	}
+
+	/**
+	 * 从指定的 QRCode 图像对象中解析出其内容。
+	 *
+	 * @param qrCodeImage QRCode 图像对象
+	 * @return QRCode 中的内容
+	 */
+	public static String read(BufferedImage qrCodeImage, Charset encode) {
+		Map<DecodeHintType, Object> hints = new EnumMap<>(DecodeHintType.class);
+		hints.put(DecodeHintType.CHARACTER_SET, encode);
+		return read(qrCodeImage, hints);
+	}
+
+	/**
+	 * 从指定的 QRCode 图像对象中解析出其内容。
+	 *
+	 * @param qrCodeImage QRCode 图像对象
+	 * @param hints hints
+	 * @return QRCode 中的内容
+	 */
+	public static String read(BufferedImage qrCodeImage, Map<DecodeHintType,?> hints) {
+		LuminanceSource source = new BufferedImageLuminanceSource(qrCodeImage);
+		BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+		try {
+			Result result = new QRCodeReader().decode(bitmap, hints);
+			return result.getText();
+		} catch (NotFoundException | ChecksumException | FormatException e) {
+			throw Exceptions.unchecked(e);
+		} finally {
+			qrCodeImage.getGraphics().dispose();
+		}
+	}
+
+	/**
+	 * 从指定的 QRCode 图片文件中解析出其内容。
+	 *
+	 * @param qrCodeFile QRCode 文件
+	 * @return QRCode 中的内容
+	 */
+	public static byte[] readRawBytes(String qrCodeFile) {
+		return readRawBytes(ImageUtil.read(qrCodeFile));
+	}
+
+	/**
+	 * 从指定的 QRCode 图片文件中解析出其内容。
+	 *
+	 * @param qrCodeFile QRCode 图片文件
+	 * @return QRCode 中的内容
+	 */
+	public static byte[] readRawBytes(File qrCodeFile) {
+		return readRawBytes(ImageUtil.read(qrCodeFile));
+	}
+
+	/**
+	 * 从指定的 QRCode 图片链接中解析出其内容。
+	 *
+	 * @param qrCodeUrl QRCode 图片链接
+	 * @return QRCode 中的内容
+	 */
+	public static byte[] readRawBytes(URL qrCodeUrl) {
+		return readRawBytes(ImageUtil.read(qrCodeUrl));
+	}
+
+	/**
+	 * 从指定的 QRCode 图像对象中解析出其内容。
+	 *
+	 * @param qrCodeImage QRCode 图像对象
+	 * @return QRCode 中的内容
+	 */
+	public static byte[] readRawBytes(BufferedImage qrCodeImage) {
 		LuminanceSource source = new BufferedImageLuminanceSource(qrCodeImage);
 		BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
 		try {
 			Result result = new QRCodeReader().decode(bitmap);
-			return result.getText();
+			return result.getRawBytes();
 		} catch (NotFoundException | ChecksumException | FormatException e) {
 			throw Exceptions.unchecked(e);
+		} finally {
+			qrCodeImage.getGraphics().dispose();
 		}
 	}
 
@@ -507,10 +613,11 @@ public final class QrCode {
 		g2.setComposite(AlphaComposite.SrcAtop);
 		// 画 logo 图
 		g2.drawImage(logoImage, 4, 4, logoRectWidth - 8, logoRectHeight - 8, null);
+		logoImage.getGraphics().dispose();
 		g2.dispose();
 		// 将 logo 添加到 二维码上
 		Graphics2D gc = (Graphics2D) qrCodeImage.getGraphics();
-		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		gc.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 		gc.setColor(qrCode.backGroundColor);
 		gc.drawImage(logoRect,
 			(baseWidth - logoRectWidth) / 2,

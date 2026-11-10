@@ -1,6 +1,440 @@
 # 变更记录
 
 ## 发行版本
+
+### v4.1.3 - 2026-10-26
+
+- feat(error): mica-lite 添加 MultipartException 处理，文件上传请求错误返回 400 和业务码，不再作为未知异常处理
+- feat(error): mica-core SystemCode 添加 MULTIPART_ERROR（文件上传请求错误）和 FILE_TOO_LARGE（上传文件超过大小限制）
+- refactor(ddddocr): 移除 mica-ddddocr 模块，验证码识别能力已迁移至 mica-ai（net.dreamlu:mica-ai-captcha）
+- refactor(bom): mica-bom 不再包含 mica-ddddocr 与 onnxruntime 的版本管理
+- fix(xss): mica-xss 修复 clear 模式反转义导致的 XSS 绕过，实体编码的标签与事件属性不再被还原成可执行代码
+- fix(xss): mica-xss 修复 url 属性协议校验不全，javascript、vbscript、data 等危险协议被过滤，仅保留 http、https、ftp、mailto、tel 协议与相对地址
+- fix(xss): mica-xss 过滤 style 中的危险写法，javascript、vbscript、expression 等内容不再保留
+- feat(holidays): mica-holidays 内置节假日数据改为自动扫描 classpath 加载，年份从数据文件名解析（当前覆盖 2019 至 2027 年），新增年份只需放入 data/{year}_data.json，无需修改代码
+
+### v4.0.2 - 2026-02-06
+
+- feat(ddddocr): 添加 mica-ddddocr 验证码识别模块
+- feat(ip2region): mica-ip2region 同步 ip2region 最新版本支持 ipv4 和 ipv6，IpInfo 删除区域，添加isoCode字段
+- feat(security): mica-core AES加密使用随机IV，提供encryptSafe和decryptSafe方法
+- feat(security): mica-core 标记DesUtil为过时，不建议继续使用，推荐AesUtil替代
+- feat(security): mica-core RsaUtil内部加解密方法支持指定padding模式
+- refactor(redis): mica-redis 增加 Redis Stream 线程池大小配置
+- refactor(redis): mica-redis 移除RedisRateLimiterAspect中不必要的@NonNull注解
+- fix(launch): mica-lite 修复多管理端口启动日志 Swagger 地址端口打印问题
+
+### v3.4.3 - 2025-02-23
+
+- :sparkles: mica-metrics UndertowMetrics 不再需要反射
+- :sparkles: 折腾不动了，删除 gradle 支持
+- :bug: mica-redis 修复redis配置顺序问题
+- :bug: mica-core DesensitizationUtil 修复 .StringIndexOutOfBounds
+- :bug: mica-core 解决 bean copy java17 反射报错
+
+### v3.2.5 - 2024-04-26
+
+- :sparkles: mica-core 内部直接使用 StandardCharsets
+- :sparkles: mica-core 添加一个 id 生成系列方法，原理同 uuid
+- :sparkles: mica-redis !34 fix(RedisSerializer): 适配kotlin类型 (data class 是 final修饰的)
+- :sparkles: mica-lite refactor(MicaExceptionTranslator): change log position
+
+### v3.2.4 - 2024-03-23
+
+- :sparkles: mica-redis 修复redis启动警告 gitee #I8REGD #32 感谢 `@mymx2`
+- :sparkles: mica-xss 调整逻辑 gitee #I9AL2N 感谢 `@okayaok` 反馈
+- :sparkles: mica-core validation 增加范围验证 gitee #30 感谢 `@mymx2`
+- :sparkles: mica-core 完善 HexUtil
+- :sparkles: mica-lite 区分knife4j路径 gitee #28 感谢 `@mymx2`
+- :sparkles: mica-lite 完善 FieldError 为空问题 gitee #27 感谢 `@mymx2`
+
+### v3.2.3 - 2024-03-02
+- :sparkles: mica-ip2region 升级 ip2region xdb 文件。
+- :sparkles: mica-http 简化 ssl 配置。
+- :arrow_up: 依赖升级
+
+### v3.2.2 - 2024-01-21
+- :sparkles: mica-holidays graalvm AOT 支持。
+- :bug: mica-ip2region 修复 ipv6 数据库文件 graalvm AOT 支持。感谢 github `@lishangbu` pr
+- :sparkles: 依赖升级
+
+### v3.2.0 - 2023-12-02
+
+- :sparkles: mica-http 完善和优化，使用控制台日志时，可以没有 slf4j 依赖。
+- :sparkles: mica-core 完善 JsonUtil。
+- :arrow_up: 依赖升级
+
+### v3.1.6 - 2023-12-02
+
+- :sparkles: mica-http 完善和优化，使用控制台日志时，可以没有 slf4j 依赖。
+- :sparkles: mica-core 完善 JsonUtil。
+- :arrow_up: 依赖升级
+
+### v3.1.5.1 - 2023-10-28
+
+- :sparkles: mica-holidays 模块，更新 2024 节假日。
+
+### v3.1.5 - 2023-10-21
+
+- :sparkles: 添加 mica-holidays 模块
+- :sparkles: 完善 mica-http 感谢好友 `@吴天狗` 反馈
+- :sparkles: mica-core RsaUtil 支持分段 gitee #I855S0 感谢 `@桂在坚持` 反馈
+- :sparkles: 升级 gradle wrapper 版本到 8.4
+- :sparkles: 升级 mica-auto 版本
+
+### v3.1.3 - 2023-08-27
+
+- :sparkles: 完善 mica-lite 支持 JsonView 和 R 统一封装返回 github #53 感谢 `@yangwenliang123` 反馈。
+- :sparkles: 优化 mica-core 完善、优化 uuid
+- :sparkles: 优化 mica-core 完善 JsonUtil，添加 toJsonWithView 系列方法。
+- :sparkles: 添加 mica-nats 模块，高性能、轻量级 mq。
+- :sparkles: 优化 mica-ip2region 默认为 utf-8 字符集 gitee #I7TT74 感谢 `@Hi,all`。
+- :sparkles: 完善 mica-redis 方便 geo、HyperLogLog 操作。
+
+### v3.1.1 - 2023-07-16
+- :sparkles: mica-redis key 支持统一添加前缀和自定义 key 处理
+- :sparkles: mica-redis 限流时间使用毫秒数
+- :arrow_up: 升级到 Spring boot 3.1.1
+
+### v3.0.8 - 2023-06-24
+- :sparkles: mica-ip2region 升级 `ip2region.xdb`
+- :sparkles: mica-redis pub、sub 应该使用 `RedisMessageListenerContainer` 进行订阅
+- :sparkles: mica-redis 优化 `RPubSubEvent`
+
+### v3.0.7 - 2023-05-20
+- :sparkles: mica-redis 完善 MicaRedisCache，添加 `setByJsonSer` 方法。
+- :bug: mica-core 修复 NumberUtil form62Str 转回不准的问题，感谢 `@Just do it` 反馈。
+
+### v3.0.6 - 2023-04-23
+- :sparkles: mica-redis 添加对 pub sub 的简单封装
+- :sparkles: mica-ip2region 支持 ipv6
+- :sparkles: mica-http 优化
+- :bug: mica-xss 修复 `@XssCleanIgnore` 注解判断
+
+### v3.0.5 - 2023-03-25
+- :sparkles: 完善 HexUtil 工具类
+- :arrow_up: 依赖升级，升级到安全版的 Spring boot。
+
+### v3.0.4 - 2023-03-01
+- :arrow_up: 升级到 Spring boot 3.0.4
+
+### v3.0.3 - 2023-03-01
+- :sparkles: 优化 `Base64Util`
+- :sparkles: 使用 `@AutoConfiguration` 优化代码
+- :hammer: 添加发版脚本，方便发布到中央库
+- :arrow_up: 依赖升级
+
+### v3.0.1 - 2022-12-23
+- :sparkles: 代码优化，升级到高版本 jdk 语法
+- :sparkles: 优化 gradle 参数，开启缓存和并行处理
+- :sparkles: gradle 版本控制重构，感谢 `@livk-cloud` pr
+- :arrow_up: 升级到 Spring boot 3.0.1
+- :arrow_up: 升级到 Spring cloud 2022.0.0
+
+### v3.0.0 - 2022-12-11
+- :sparkles: gradle 添加 `-parameters` 编译参数
+- :sparkles: 部分模块扩展 RuntimeHints 支持 AOT
+- :sparkles: mica-ip2region 更新 `ip2region.xdb`
+- :sparkles: 代码优化，升级到高版本 jdk 语法
+- :arrow_up: 升级到 java17
+- :arrow_up: 升级到 Spring boot3
+
+### v2.7.17.1 - 2023-10-28
+
+- :sparkles: mica-holidays 模块，更新 2024 节假日。
+
+### v2.7.17 - 2023-10-21
+
+- :sparkles: 添加 mica-holidays 模块
+- :sparkles: 完善 mica-http 感谢好友 `@吴天狗` 反馈
+- :sparkles: mica-core RsaUtil 支持分段 gitee #I855S0 感谢 `@桂在坚持` 反馈
+- :sparkles: 升级 gradle wrapper 版本到 8.4
+- :sparkles: 升级 mica-auto 版本
+
+### v2.7.15 - 2023-08-27
+
+- :sparkles: 完善 mica-lite 支持 JsonView 和 R 统一封装返回 github #53 感谢 `@yangwenliang123` 反馈。
+- :sparkles: 优化 mica-core 完善、优化 uuid
+- :sparkles: 优化 mica-core 完善 JsonUtil，添加 toJsonWithView 系列方法。
+- :sparkles: 添加 mica-nats 模块，高性能、轻量级 mq。
+- :sparkles: 优化 mica-ip2region 默认为 utf-8 字符集 gitee #I7TT74 感谢 `@Hi,all`。
+- :sparkles: 完善 mica-redis 方便 geo、HyperLogLog 操作。
+
+### v2.7.14 - 2023-07-25
+- :sparkles: mica-redis key 支持统一添加前缀和自定义 key 处理
+- :sparkles: mica-redis 限流时间使用毫秒数
+- :arrow_up: 升级到 Spring boot 2.7.14
+
+### v2.7.13 - 2023-06-24
+- :sparkles: mica-ip2region 升级 `ip2region.xdb`
+- :sparkles: mica-redis pub、sub 应该使用 `RedisMessageListenerContainer` 进行订阅
+- :sparkles: mica-redis 优化 `RPubSubEvent`
+
+### v2.7.12 - 2023-05-20
+- :sparkles: mica-redis 完善 MicaRedisCache，添加 `setByJsonSer` 方法。
+- :bug: mica-core 修复 NumberUtil form62Str 转回不准的问题，感谢 `@Just do it` 反馈。
+
+### v2.7.11 - 2023-04-23
+- :sparkles: mica-redis 添加对 pub sub 的简单封装
+- :sparkles: mica-ip2region 支持 ipv6
+- :sparkles: mica-http 优化
+- :bug: mica-xss 修复 `@XssCleanIgnore` 注解判断
+
+### v2.7.10 - 2023-03-23
+- :sparkles: 优化 Base64Util
+- :sparkles: 完善 HexUtil 工具类
+- :arrow_up: 依赖升级
+
+### v2.7.9 - 2023-02-24
+- :sparkles: mica-ip2region 更新 ip2region.xdb
+- :sparkles: 添加发布脚本
+- :sparkles: 优化 gradle 参数，开启并发。
+- :sparkles: 使用 `@AutoConfiguration` 优化代码。
+- :arrow_up: 依赖升级
+
+### v2.7.6 - 2022-11-28
+- :sparkles: mica-core NumberUtil 调整 62 进制转十进制
+- :sparkles: mica-redis 添加 redis set 带自定义序列化方法，方便使用
+- :bug: mica-metrics 使用 HikariCP 并且有 druid jar 时报错问题，修复 #I60O8C
+- :arrow_up: 依赖升级
+
+### v2.7.5 - 2022-10-21
+- :sparkles: mica-xss `@XssCleanIgnore` 注解添加 `value()` 数组，支持忽略 json body 字段名。感谢 `冷冷（pig开源）`提出的需求。
+- :sparkles: mica-redis `hash` 便捷取并集，感谢 `@just-cloud (zqf)` pr
+- :bug: mica-xss json int、bool 等基础类型映射到字符串时的类型问题。感谢 `@有请岁月` 反馈。
+- :arrow_up: 依赖升级
+
+### v2.7.4 - 2022-09-25
+- :sparkles: mica-redis 方便多 redis 数据源使用。
+- :sparkles: mica-xss 优化异常提示。
+- :sparkles: mica-xss 增加校验 mode，提示异常
+- :sparkles: 升级使用 junit5
+- :sparkles: 开源之夏 mica-openapi 完成 #I5539K
+- :memo: 描述错误，感谢 `@iacker` pr
+- :bug: mica-redis 修复 lPush list 参数问题。
+- :arrow_up: 依赖升级
+
+### v2.7.3 - 2022-08-21
+- :sparkles: mica-core 统一去除 @UtilityClass，方便继承。
+- :sparkles: mica-xss 放开 XssHolder，方便自定义处理。
+- :sparkles: ObjectProvider<List> 统一替换成 ObjectProvider orderedStream() [#14467](https://github.com/spring-projects/spring-boot/issues/14467) 
+- :sparkles: mica-redis Jackson 改为 JsonUtil.getInstance() 避免受 web 影响。
+- :sparkles: mica-redis 添加对 bitmap 支持。感谢 `@BlackR` 贡献。
+- :sparkles: mica-redis 限流 lua 脚本优化，更好支持阿里 redis，感谢 `@火炎焱燚` 反馈。
+- :bug: mica-redis 修复设置默认缓存名分割符号为 “:” 没生效。
+- :arrow_up: 升级 okhttp 到 4.x
+
+### v2.7.2 - 2022-07-24
+- :sparkles: mica-core JsonUtil 添加 toPrettyJson 感谢 `@老古` 反馈。
+- :sparkles: mica-core JsonUtil 添加 getType。
+- :sparkles: mica-redis 设置默认缓存名分割符号为 “:”。
+- :sparkles: mica-redis stream add 方法完善，方便限制 stream 长度。
+- :sparkles: mica-redis incrBy, decrBy新增Duration过期时间单位，感谢 `@BlackR` pr。
+- :sparkles: update mica-spider/README.md. 感谢 `@BlackR` pr
+- :bug: 修复 git 修改 xdb 文件，导致单元测试失败。
+- :arrow_up: 依赖升级
+
+### v2.7.1.1 - 2022-06-27
+- :sparkles: 升级 ip2region
+
+### v2.7.1.0 - 2022-06-25
+- :sparkles: 更新 mica-ip2region db文件，感谢 `@lishangbu`
+- :sparkles: mica-core SpringContextUtil 添加支持Object类型的事件发布，感谢 `@lishangbu`
+- :bug: mica-redis 修复 2.7.x 下 CacheManager 不生效的问题。
+
+### v2.7.1 - 2022-06-24
+- :sparkles: mica-redis 添加 pub、sub 方便使用。
+- :sparkles: mica-redis setNX 添加超时时间支持，感谢 github `@lay-g`
+- :sparkles: mica-redis 添加 setnx 命令支持，感谢 github `@lay-g`
+- :sparkles: mica-xss 完善，数据类型不符合时抛出异常，github #46
+- :sparkles: mica-core 添加只包含数字和字母的 NanoId StringUtil#getNanoId62()
+- :sparkles: mica-core 完善 AesUtil，添加同 mysql 通用的加密解密。
+- :sparkles: mica-core 添加 http 解析，规则同 idea http。
+- :sparkles: mica-core 完善 JsonUtil。
+- :memo: 添加 mica-xss 不生效排查步骤。
+- :arrow_up: spring boot 到 2.7.1
+
+### v2.6.8 - 2022-05-22
+- :sparkles: mica-logging 支持自定义 Logstash 字段配置。
+- :sparkles: mica-activerecord SqlLogFilter 支持正则表达式过滤要打印的 sql。
+- :sparkles: mica-core Pair 支持 jackson 序列化。
+- :arrow_up: Upgrading dependencies.
+
+### v2.6.7 - 2022-04-30
+- :sparkles: mica-logging 升级 logstash-logback-encoder 代码调整。
+- :sparkles: mica-logging 升级 loki-logback-appender 代码调整。
+- :sparkles: mica-core 添加 StreamUtil
+- :sparkles: mica-redis stream 添加 bytes 方便自定义处理
+- :memo: 完善 mica-redis stream 使用文档。
+- :arrow_up: spring boot 到 2.6.7
+- :arrow_up: spring cloud 到 2021.0.2
+
+### v2.6.6 - 2022-04-02
+- :sparkles: mica-prometheus 添加 profile 标签，用于多环境。
+- :sparkles: mica-redis 添加 stream，默认关闭。
+- :sparkles: mica-core 完善 DigestUtil。
+- :sparkles: mica-core StringUtil 添加 getNanoId 21位的唯一Id，基于 java9+ uuid 算法，性能更加强悍。
+- :sparkles: 添加 mica-openapi 模块。
+- :arrow_up: spring boot 到 2.6.6
+
+### v2.5.8 - 2021-12-30
+- :sparkles: mica-xss 添加一个使用场景。
+- :sparkles: JsonUtil 新增支持 java.io.Reader 转换操作 感谢 @caiqyxyx
+- :memo: fix Comment error close #I4K6LZ
+- :arrow_up: spring boot 到 2.5.8
+- :arrow_up: spring cloud 到 2020.0.5
+- :arrow_up: jetCache 到 2.6.2
+
+### v2.5.7 - 2021-11-28
+- :sparkles: mica-redis 优化，方便自定义序列化。
+- :sparkles: mica-xss 优化，避免 xss 关闭时被类扫描，导致 bean 找不到异常。
+- :sparkles: mica-core 添加 retry 接口。
+- :sparkles: mica-http 代码优化去掉 spring retry 依赖。
+- :memo: mica-redis 优化 README.md 文档。
+- :memo: mica-http 更新 README.md 文档。
+- :arrow_up: Upgrading dependencies.
+- :arrow_up: 升级 Gradle 到 7.3。
+- :arrow_up: 升级 lombok 到 1.18.22。
+- :arrow_up: 升级 Spring boot 到 2.5.7。
+- :arrow_up: 升级 mica-weixin 到 2.1.2。
+
+### v2.5.6 - 2021-10-28
+- :sparkles: mica-redis 优化 MicaRedisCache bean 名称。
+- :bug: mica-redis rpush、lpush 修复，优化 MicaRedisCache 方法泛型。
+- :sparkles: mica-spider 更好的支持 java17
+- :sparkles: mica-core BeanUtil#generator 支持 java17
+- :arrow_up: 升级 druid 到 1.2.8
+- :arrow_up: 升级到 Spring boot 到 2.5.6
+
+### v2.5.5 - 2021-09-25
+- :sparkles: mica-http 添加 HttpException 方便异常时获取相应信息。
+- :sparkles: mica-http ResponseSpec 添加 isNotOk 用于重试断言。
+- :sparkles: mica-core 优化 bean copy 和 bean map 支持 java17。
+- :sparkles: mica-core 优化 Mica Context 接口。
+- :sparkles: 优化 github action。
+- :sparkles: 升级 gradle 版本到 7.2，支持 java17。
+- :bug: mica-qrcode 修复 toImage 字符集问题。
+- :bug: mica-xss 目前只支持 servlet 只在 servlet 下启用。
+- :bug: mica-core 修复 ObjectUtil#toBoolean 方法，感谢 `@caiqyxyx` 同学反馈。
+- :arrow_up: 升级到 Spring boot 到 2.5.5
+- :arrow_up: 升级到 Spring cloud 2020.0.4。
+
+### v2.4.11 - 2021-09-25
+- :sparkles: mica-http 添加 HttpException 方便异常时获取相应信息。
+- :sparkles: mica-http ResponseSpec 添加 isNotOk 用于重试断言。
+- :sparkles: mica-core 优化 bean copy 和 bean map 支持 java17。
+- :sparkles: mica-core 优化 Mica Context 接口。
+- :sparkles: 优化 github action。
+- :sparkles: 升级 gradle 版本到 7.2，支持 java17。
+- :bug: mica-qrcode 修复 toImage 字符集问题。
+- :bug: mica-xss 目前只支持 servlet 只在 servlet 下启用。
+- :bug: mica-core 修复 ObjectUtil#toBoolean 方法，感谢 `@caiqyxyx` 同学反馈。
+- :arrow_up: 升级到 Spring boot 到 2.4.11
+- :arrow_up: 升级到 Spring cloud 2020.0.4。
+
+### v2.5.4 - 2021-08-22
+- :sparkles: 新增 mica-prometheus 模块支持 http sd 和 alert webhook。
+- :sparkles: mica-swagger 支持 v3 注解 `@Tag`，`R` 添加 v3 注解。  
+- :sparkles: mica-logging 代码优化。
+- :sparkles: github actions 添加缓存。
+- :memo: 更新模块图。
+- :memo: [Summer 2021] 添加英文 readme。
+- :arrow_up: 升级 Spring Native 到 0.10.2。
+- :arrow_up: 升级到 Spring boot 到 2.5.4
+- :arrow_up: 升级 mica-auto 到 2.1.3 修复多模块增量编译问题。
+- :arrow_up: 升级 jsoup 到 1.14.2，不再支持低版本 jsoup。
+- :arrow_up: 升级 knife4j 到 3.0.3
+- :arrow_up: 升级到 jfinal 到 4.9.16
+
+### v2.5.3 - 2021-07-30
+- :sparkles: 完善 mica-lite，添加 SpringContextUtil bean，文件上传添加开关。
+- :arrow_up: 升级到 jfinal 到 4.9.15
+- :arrow_up: 升级到 jsoup 到 1.14.1
+- :arrow_up: 升级到 mica-auto 到 2.1.2
+
+### v2.5.2 - 2021-07-02
+- :sparkles: 代码优化，减少 codacy 上的问题。
+- :sparkles: 优化 mica-http 添加 cookie 管理。
+- :memo: 完善 mica-http README.md。
+- :memo: 更新模块图。
+- :arrow_up: 升级到 Spring boot 到 2.5.2
+- :arrow_up: 升级到 Spring Native 到 0.10.1
+- :arrow_up: 升级到 mica auto 到 2.1.1
+
+### v2.4.8 - 2021-07-02
+- :sparkles: 代码优化，减少 codacy 上的问题。
+- :sparkles: 优化 mica-http 添加 cookie 管理。
+- :memo: 完善 mica-http README.md。
+- :memo: 更新模块图。
+- :arrow_up: 升级到 Spring boot 到 2.4.8
+- :arrow_up: 升级到 Spring Native 到 0.10.1
+- :arrow_up: 升级到 mica auto 到 2.1.1
+
+### v2.5.1 - 2021-06-15
+- :sparkles: 整体代码优化减少 codacy 上的问题。
+- :sparkles: mica-http 代码优化，支持自定义 Logger。
+- :sparkles: 添加 mica-activerecord 模块。
+- :sparkles: mica-core 优化 DisableValidationTrustManager 方便使用。
+- :sparkles: mica-redis 可自定义 RedisTemplate。
+- :sparkles: mica-logging loki sender 默认值优化，根据依赖判断，gitee #I3T68Y。
+- :arrow_up: 升级到 Spring cloud 2020.0.3。
+- :arrow_up: 升级到 Spring boot 到 2.5.1。
+
+### v2.4.7 - 2021-06-15
+- :sparkles: 整体代码优化减少 codacy 上的问题。
+- :sparkles: mica-http 代码优化，支持自定义 Logger。
+- :sparkles: 添加 mica-activerecord 模块。
+- :sparkles: mica-core 优化 DisableValidationTrustManager 方便使用。
+- :sparkles: mica-redis 可自定义 RedisTemplate。
+- :sparkles: mica-logging loki sender 默认值优化，根据依赖判断，gitee #I3T68Y。
+- :arrow_up: 升级到 Spring cloud 2020.0.3。
+- :arrow_up: 升级到 Spring boot 到 2.4.7。
+
+### v2.5.0.1 - 2021-05-25
+- :sparkles: 代码优化，减少 codacy 上的问题。
+- :bug: 修复 mica-redis RedisTemplate 初始化。
+- :memo: update README.md 更新文档地址。
+- :sparkles: 优化包导入。
+
+### v2.4.6.1 - 2021-05-25
+- :sparkles: 代码优化，减少 codacy 上的问题。
+- :bug: 修复 mica-redis RedisTemplate 初始化。
+- :memo: update README.md 更新文档地址。
+- :sparkles: 优化包导入。
+
+### v2.5.0 - 2021-05-23
+- :sparkles: mica-redis 微调，支持 Spring boot 到 2.5.0。
+- :arrow_up: 升级 Spring boot 到 2.5.0。
+
+### v2.4.6 - 2021-05-23
+- :sparkles: mica-logging 完成 loki 支持 #36 #I3PX2F。
+- :sparkles: mica-ip2region、mica-captcha 添加对 spring-native 的支持 #38 #I3PX2N。
+- :sparkles: mica-jetcache 添加 metrics 支持 #37 #I3PX2K。
+- :sparkles: mica-caffeine 添加不支持自定义 Caffeine bean 提示。
+- :sparkles: mica-core R 添加 throwOn 系列方法。
+- :sparkles: mica-redis 优化 ICacheKey 和 scan。
+- :sparkles: 代码统一优化，减少部分阿里巴巴规约提示。
+- :bug: mica-logging 修复 LoggingInitializer Spring boot 2.4.x 失效的问题。
+- :arrow_up: 升级 druid 到 1.2.6。
+- :arrow_up: 升级 Spring boot 到 2.4.6。
+
+### v2.4.5 - 2021-04-28
+- :sparkles: 添加 mica-jetcache 模块。
+- :sparkles: 添加 mica-lite 模块。
+- :sparkles: mica-metrics 重构 UndertowMetrics，暴露更加有用的指标。
+- :sparkles: mica-metrics 完善 DruidMetrics，暴露更加有用的指标。
+- :sparkles: mica-redis 调整 bean 名称 redisTemplate 为 micaRedisTemplate 减少冲突。
+- :sparkles: mica-captcha 中的 cache 改为每次读取， caffeine 会刷新，照成引用为 null。
+- :sparkles: mica-captcha 优化 bean 名称和添加 generateBase64Vo 方法。
+- :sparkles: mica-logging 减少 reflections 日志，readme 添加阿里云、腾讯云日志服务接入链接。
+- :sparkles: mica-qrcode 添加 base64 image 方法。
+- :sparkles: mica-core 添加网关通用 code。
+- :sparkles: mica-core 添加 CollectionUtil computeIfAbsent 方法 避免 jdk8 下的 bugs JDK-8161372
+- :sparkles: mica-core Pkcs7Encoder 中默认的 BLOCK_SIZE 改为 16 github #35 兼容更多编程语言。
+- :bug: mica-caffeine 多 cache name 时报错。
+- :arrow_up: 升级 spring boot 到 2.4.5
+- :arrow_up: 升级 mica-weixin 到 2.1.0（优化对 mica-caffeine 的支持）
+
 ### v2.4.4-GA - 2021-03-28
 - :sparkles: mica-qrcode 新增模块，友好的二维码识别和生成
 - :sparkles: mica-logging 重新设计，`logstash-logback-encoder` 调整为可选，`logstash` 和 `json` 需手动添加依赖

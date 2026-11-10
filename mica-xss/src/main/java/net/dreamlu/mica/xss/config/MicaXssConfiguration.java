@@ -17,17 +17,21 @@
 package net.dreamlu.mica.xss.config;
 
 import lombok.RequiredArgsConstructor;
+import net.dreamlu.mica.core.spring.SpringContextUtil;
 import net.dreamlu.mica.xss.core.*;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import tools.jackson.databind.module.SimpleModule;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -35,12 +39,24 @@ import java.util.List;
  *
  * @author L.cm
  */
+@AutoConfiguration
 @RequiredArgsConstructor
-@Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(MicaXssProperties.class)
-@ConditionalOnProperty(value = "mica.xss.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+	prefix = MicaXssProperties.PREFIX,
+	name = "enabled",
+	havingValue = "true",
+	matchIfMissing = true
+)
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class MicaXssConfiguration implements WebMvcConfigurer {
 	private final MicaXssProperties xssProperties;
+
+	@Bean
+	@ConditionalOnMissingBean
+	public SpringContextUtil springContextUtil() {
+		return new SpringContextUtil();
+	}
 
 	@Bean
 	@ConditionalOnMissingBean
@@ -49,28 +65,35 @@ public class MicaXssConfiguration implements WebMvcConfigurer {
 	}
 
 	@Bean
+	@ConditionalOnMissingBean
 	public FormXssClean formXssClean(MicaXssProperties properties,
 									 XssCleaner xssCleaner) {
 		return new FormXssClean(properties, xssCleaner);
 	}
 
 	@Bean
-	public Jackson2ObjectMapperBuilderCustomizer xssJacksonCustomizer(MicaXssProperties properties,
-																	  XssCleaner xssCleaner) {
-		JacksonXssClean xssClean = new JacksonXssClean(properties, xssCleaner);
-		return builder -> builder.deserializerByType(String.class, xssClean);
+	public JsonMapperBuilderCustomizer xssJacksonCustomizer(MicaXssProperties properties,
+															XssCleaner xssCleaner) {
+		return builder -> {
+			SimpleModule module = new SimpleModule();
+			module.addDeserializer(String.class, new JacksonXssClean(properties, xssCleaner));
+			builder.addModule(module);
+		};
 	}
 
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
-		List<String> patterns = xssProperties.getPathPatterns();
+		List<String> patterns = new ArrayList<>();
+		// 拦截路由和排除的路由
+		patterns.addAll(xssProperties.getPathPatterns());
+		patterns.addAll(xssProperties.getPathExcludePatterns());
 		if (patterns.isEmpty()) {
 			patterns.add("/**");
 		}
+		// 拦截所有
 		XssCleanInterceptor interceptor = new XssCleanInterceptor(xssProperties);
 		registry.addInterceptor(interceptor)
 			.addPathPatterns(patterns)
-			.excludePathPatterns(xssProperties.getPathExcludePatterns())
 			.order(Ordered.LOWEST_PRECEDENCE);
 	}
 

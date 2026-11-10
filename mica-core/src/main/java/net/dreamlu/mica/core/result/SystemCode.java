@@ -17,6 +17,7 @@
 package net.dreamlu.mica.core.result;
 
 import io.swagger.annotations.ApiModel;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -28,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 @ApiModel(description = "系统内置code")
+@Schema(description = "系统内置code")
 public enum SystemCode implements IResultCode {
 	/**
 	 * 系统未知异常
@@ -54,9 +56,9 @@ public enum SystemCode implements IResultCode {
 	 */
 	PARAM_VALID_ERROR(SystemCode.PARAM_VALID_ERROR_CODE, "参数校验失败"),
 	/**
-	 * 404 没找到请求
+	 * 404 请求的资源不存在
 	 */
-	NOT_FOUND(SystemCode.NOT_FOUND_CODE, "404 没找到请求"),
+	NOT_FOUND(SystemCode.NOT_FOUND_CODE, "404 请求的资源不存在"),
 	/**
 	 * 消息不能读取
 	 */
@@ -77,6 +79,23 @@ public enum SystemCode implements IResultCode {
 	 * 请求被拒绝
 	 */
 	REQ_REJECT(SystemCode.REQ_REJECT_CODE, "请求被拒绝"),
+	/**
+	 * 文件上传请求错误
+	 */
+	MULTIPART_ERROR(SystemCode.MULTIPART_ERROR_CODE, "文件上传请求错误"),
+	/**
+	 * 上传文件超过大小限制
+	 */
+	FILE_TOO_LARGE(SystemCode.FILE_TOO_LARGE_CODE, "上传文件超过大小限制"),
+
+	//-------------------------------------------------------------//
+	/**
+	 * 网关异常
+	 */
+	BAD_GATEWAY(SystemCode.BAD_GATEWAY_CODE, "Bad gateway"),
+	SERVICE_UNAVAILABLE(SystemCode.SERVICE_UNAVAILABLE_CODE, "Service unavailable"),
+	GATEWAY_TIMEOUT(SystemCode.GATEWAY_TIMEOUT_CODE, "Gateway timeout"),
+	GATEWAY_FORBADE(SystemCode.GATEWAY_FORBADE_CODE, "Gateway forbade"),
 
 	//-------------------------------------------------------------//
 	/**
@@ -115,7 +134,15 @@ public enum SystemCode implements IResultCode {
 	public static final int MEDIA_TYPE_NOT_SUPPORTED_CODE = 100007;
 	public static final int MEDIA_TYPE_NOT_ACCEPT_CODE = 100008;
 	public static final int REQ_REJECT_CODE = 100009;
-
+	public static final int MULTIPART_ERROR_CODE = 100014;
+	public static final int FILE_TOO_LARGE_CODE = 100015;
+	/**
+	 * 网关通用 code
+	 */
+	public static final int BAD_GATEWAY_CODE = 100010;
+	public static final int SERVICE_UNAVAILABLE_CODE = 100011;
+	public static final int GATEWAY_TIMEOUT_CODE = 100012;
+	public static final int GATEWAY_FORBADE_CODE = 100013;
 	/**
 	 * 通用数据层 code
  	 */

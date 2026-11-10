@@ -16,25 +16,33 @@
 
 package net.dreamlu.mica.http;
 
+import net.dreamlu.mica.core.retry.IRetry;
+import net.dreamlu.mica.core.retry.SimpleRetry;
 import net.dreamlu.mica.core.ssl.DisableValidationTrustManager;
 import net.dreamlu.mica.core.ssl.TrustAllHostNames;
-import net.dreamlu.mica.core.utils.Exceptions;
-import net.dreamlu.mica.core.utils.Holder;
+import net.dreamlu.mica.core.tuple.Pair;
 import net.dreamlu.mica.core.utils.JsonUtil;
+import net.dreamlu.mica.core.utils.ResourceUtil;
 import net.dreamlu.mica.core.utils.StringPool;
 import okhttp3.*;
-import okhttp3.internal.Util;
 import okhttp3.internal.http.HttpMethod;
-import okhttp3.logging.HttpLoggingInterceptor;
+import org.jspecify.annotations.Nullable;
 
-import javax.annotation.Nullable;
 import javax.net.ssl.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
-import java.security.KeyManagementException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.cert.CertificateException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +50,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
+import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 
 /**
  * ok http 封装，请求结构体
@@ -50,8 +59,8 @@ import java.util.function.Predicate;
  * @author L.cm
  */
 public class HttpRequest {
-	private static final String DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36";
-	private static final MediaType APPLICATION_JSON = MediaType.get("application/json;charset=UTF-8");
+	private static final String DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36 Edg/144.0.0.0";
+	private static final MediaType APPLICATION_JSON = MediaType.get("application/json");
 	private static volatile OkHttpClient httpClient = new OkHttpClient();
 	@Nullable
 	private static HttpLoggingInterceptor globalLoggingInterceptor = null;
@@ -65,10 +74,9 @@ public class HttpRequest {
 	private Boolean followRedirects;
 	@Nullable
 	private Boolean followSslRedirects;
+	private HttpLoggingInterceptor.@Nullable Logger logger;
 	@Nullable
-	private HttpLogger httpLogger;
-	@Nullable
-	private HttpLoggingInterceptor.Level logLevel;
+	private LogLevel logLevel;
 	@Nullable
 	private CookieJar cookieJar;
 	@Nullable
@@ -91,9 +99,9 @@ public class HttpRequest {
 	@Nullable
 	private Authenticator proxyAuthenticator;
 	@Nullable
-	private RetryPolicy retryPolicy;
+	private IRetry retry;
 	@Nullable
-	private Boolean disableSslValidation;
+	private BiPredicate<Integer, ResponseSpec> respPredicate;
 	@Nullable
 	private HostnameVerifier hostnameVerifier;
 	@Nullable
@@ -171,12 +179,16 @@ public class HttpRequest {
 	}
 
 	public HttpRequest query(String name, @Nullable Object value) {
-		this.uriBuilder.addQueryParameter(name, value == null ? null : String.valueOf(value));
+		if (value != null) {
+			this.uriBuilder.addQueryParameter(name, String.valueOf(value));
+		}
 		return this;
 	}
 
 	public HttpRequest queryEncoded(String encodedName, @Nullable Object encodedValue) {
-		this.uriBuilder.addEncodedQueryParameter(encodedName, encodedValue == null ? null : String.valueOf(encodedValue));
+		if (encodedValue != null) {
+			this.uriBuilder.addEncodedQueryParameter(encodedName, String.valueOf(encodedValue));
+		}
 		return this;
 	}
 
@@ -203,18 +215,40 @@ public class HttpRequest {
 		return this;
 	}
 
-	public HttpRequest bodyString(String body) {
-		this.requestBody = RequestBody.create(APPLICATION_JSON, body);
-		return this;
+	public HttpRequest body(byte[] body) {
+		return body(RequestBody.create(body));
 	}
 
-	public HttpRequest bodyString(MediaType contentType, String body) {
-		this.requestBody = RequestBody.create(contentType, body);
-		return this;
+	public HttpRequest body(byte[] body, MediaType contentType) {
+		return body(RequestBody.create(body, contentType));
+	}
+
+	public HttpRequest body(File body, MediaType contentType) {
+		return body(RequestBody.create(body, contentType));
+	}
+
+	public HttpRequest body(String body, MediaType contentType) {
+		return body(RequestBody.create(body, contentType));
+	}
+
+	public HttpRequest bodyString(String body) {
+		return bodyString(body, APPLICATION_JSON);
+	}
+
+	public HttpRequest bodyString(String body, MediaType contentType) {
+		return body(RequestBody.create(body, contentType));
+	}
+
+	public HttpRequest bodyJson(String json) {
+		return bodyString(json, APPLICATION_JSON);
 	}
 
 	public HttpRequest bodyJson(Object body) {
-		return bodyString(JsonUtil.toJson(body));
+		return bodyJson(body, APPLICATION_JSON);
+	}
+
+	public HttpRequest bodyJson(Object body, MediaType contentType) {
+		return body(JsonUtil.toJsonAsBytes(body), contentType);
 	}
 
 	private HttpRequest(final Request.Builder requestBuilder, String url, String httpMethod) {
@@ -229,6 +263,9 @@ public class HttpRequest {
 	}
 
 	private Call internalCall(final OkHttpClient client) {
+		// url
+		HttpUrl httpUrl = uriBuilder.build();
+		// client
 		OkHttpClient.Builder builder = client.newBuilder();
 		if (connectTimeout != null) {
 			builder.connectTimeout(connectTimeout.toMillis(), TimeUnit.MILLISECONDS);
@@ -251,14 +288,18 @@ public class HttpRequest {
 		if (proxyAuthenticator != null) {
 			builder.proxyAuthenticator(proxyAuthenticator);
 		}
-		if (hostnameVerifier != null) {
-			builder.hostnameVerifier(hostnameVerifier);
-		}
-		if (sslSocketFactory != null && trustManager != null) {
-			builder.sslSocketFactory(sslSocketFactory, trustManager);
-		}
-		if (Boolean.TRUE.equals(disableSslValidation)) {
-			disableSslValidation(builder);
+		// 判断是否 ssl
+		boolean isHttps = httpUrl.isHttps();
+		if (isHttps) {
+			// 主机名验证
+			builder.hostnameVerifier(hostnameVerifier == null ? TrustAllHostNames.INSTANCE : hostnameVerifier);
+			// 证书管理
+			if (sslSocketFactory == null && trustManager == null) {
+				Pair<SSLSocketFactory, X509TrustManager> pair = getSslContext((String) null, null, null, null);
+				builder.sslSocketFactory(pair.left(), pair.right());
+			} else {
+				builder.sslSocketFactory(sslSocketFactory, trustManager);
+			}
 		}
 		if (authenticator != null) {
 			builder.authenticator(authenticator);
@@ -278,22 +319,21 @@ public class HttpRequest {
 		if (followSslRedirects != null) {
 			builder.followSslRedirects(followSslRedirects);
 		}
-		if (retryPolicy != null) {
-			builder.addInterceptor(new RetryInterceptor(retryPolicy));
+		if (retry != null) {
+			builder.addInterceptor(new RetryInterceptor(retry, respPredicate));
 		}
-		if (httpLogger != null && logLevel != null && HttpLoggingInterceptor.Level.NONE != logLevel) {
-			builder.addInterceptor(getLoggingInterceptor(httpLogger, logLevel));
+		if (logger != null && logLevel != null && LogLevel.NONE != logLevel) {
+			builder.addInterceptor(getLoggingInterceptor(logger, logLevel));
 		} else if (globalLoggingInterceptor != null) {
 			builder.addInterceptor(globalLoggingInterceptor);
 		}
 		// 设置 User-Agent
 		requestBuilder.header("User-Agent", userAgent);
-		// url
-		requestBuilder.url(uriBuilder.build());
+		requestBuilder.url(httpUrl);
 		String method = httpMethod;
 		Request request;
 		if (HttpMethod.requiresRequestBody(method) && requestBody == null) {
-			request = requestBuilder.method(method, Util.EMPTY_REQUEST).build();
+			request = requestBuilder.method(method, null).build();
 		} else {
 			request = requestBuilder.method(method, requestBody).build();
 		}
@@ -320,8 +360,7 @@ public class HttpRequest {
 	}
 
 	public HttpRequest baseAuth(String userName, String password) {
-		this.authenticator = new BaseAuthenticator(userName, password);
-		return this;
+		return this.authenticator(new BaseAuthenticator(userName, password));
 	}
 
 	//// HTTP header operations
@@ -356,6 +395,13 @@ public class HttpRequest {
 		return this;
 	}
 
+	public HttpRequest addCookie(Consumer<Cookie.Builder> consumer) {
+		Cookie.Builder builder = new Cookie.Builder();
+		consumer.accept(builder);
+		this.addHeader("Cookie", builder.build().toString());
+		return this;
+	}
+
 	public HttpRequest cacheControl(final CacheControl cacheControl) {
 		this.requestBuilder.cacheControl(cacheControl);
 		return this;
@@ -376,32 +422,9 @@ public class HttpRequest {
 		return this;
 	}
 
-	private static HttpLoggingInterceptor getLoggingInterceptor(HttpLogger httpLogger, HttpLoggingInterceptor.Level level) {
-		HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(httpLogger.getLogger());
-		loggingInterceptor.setLevel(level);
-		return loggingInterceptor;
-	}
-
-	/**
-	 * 建议使用 useSlf4jLog 或者 useConsoleLog 方法
-	 *
-	 * @return HttpRequest
-	 */
-	@Deprecated
-	public HttpRequest log() {
-		this.logLevel = HttpLoggingInterceptor.Level.BODY;
-		return this;
-	}
-
-	/**
-	 * 建议使用 logLevel 方法
-	 *
-	 * @return HttpRequest
-	 */
-	@Deprecated
-	public HttpRequest log(LogLevel logLevel) {
-		this.logLevel = logLevel.getLevel();
-		return this;
+	private static HttpLoggingInterceptor getLoggingInterceptor(HttpLoggingInterceptor.Logger httpLogger,
+																LogLevel level) {
+		return new HttpLoggingInterceptor(httpLogger, level);
 	}
 
 	public HttpRequest useSlf4jLog() {
@@ -417,12 +440,24 @@ public class HttpRequest {
 	}
 
 	public HttpRequest useConsoleLog(LogLevel logLevel) {
-		return useLog(HttpLogger.Console, logLevel);
+		return useLog(HttpConsoleLogger.INSTANCE, logLevel);
 	}
 
-	public HttpRequest useLog(HttpLogger logger, LogLevel logLevel) {
-		this.httpLogger = logger;
-		this.logLevel = logLevel.getLevel();
+	public HttpRequest useDefaultLog() {
+		return useDefaultLog(LogLevel.BODY);
+	}
+
+	public HttpRequest useDefaultLog(LogLevel logLevel) {
+		return useLog(HttpLogger.DEFAULT, logLevel);
+	}
+
+	public HttpRequest useLog(HttpLoggingInterceptor.Logger logger) {
+		return useLog(logger, LogLevel.BODY);
+	}
+
+	public HttpRequest useLog(HttpLoggingInterceptor.Logger logger, LogLevel logLevel) {
+		this.logger = logger;
+		this.logLevel = logLevel;
 		return this;
 	}
 
@@ -495,32 +530,29 @@ public class HttpRequest {
 	}
 
 	public HttpRequest retry() {
-		this.retryPolicy = RetryPolicy.INSTANCE;
-		return this;
+		return retry(new SimpleRetry());
 	}
 
-	public HttpRequest retryOn(Predicate<ResponseSpec> respPredicate) {
-		this.retryPolicy = new RetryPolicy(respPredicate);
-		return this;
+	public HttpRequest retryOn(BiPredicate<Integer, ResponseSpec> respPredicate) {
+		return retry(new SimpleRetry(), respPredicate);
 	}
 
 	public HttpRequest retry(int maxAttempts, long sleepMillis) {
-		this.retryPolicy = new RetryPolicy(maxAttempts, sleepMillis);
+		return retry(new SimpleRetry(maxAttempts, sleepMillis));
+	}
+
+	public HttpRequest retry(int maxAttempts, long sleepMillis, BiPredicate<Integer, ResponseSpec> respPredicate) {
+		return retry(new SimpleRetry(maxAttempts, sleepMillis), respPredicate);
+	}
+
+	public HttpRequest retry(IRetry retry) {
+		this.retry = retry;
 		return this;
 	}
 
-	public HttpRequest retry(int maxAttempts, long sleepMillis, Predicate<ResponseSpec> respPredicate) {
-		this.retryPolicy = new RetryPolicy(maxAttempts, sleepMillis);
-		return this;
-	}
-
-	/**
-	 * 关闭 ssl 校验
-	 *
-	 * @return HttpRequest
-	 */
-	public HttpRequest disableSslValidation() {
-		this.disableSslValidation = Boolean.TRUE;
+	public HttpRequest retry(IRetry retry, BiPredicate<Integer, ResponseSpec> respPredicate) {
+		this.retry = retry;
+		this.respPredicate = respPredicate;
 		return this;
 	}
 
@@ -529,10 +561,36 @@ public class HttpRequest {
 		return this;
 	}
 
-	public HttpRequest sslSocketFactory(SSLSocketFactory sslSocketFactory, X509TrustManager trustManager) {
+	public HttpRequest sslSocketFactory(SSLSocketFactory sslSocketFactory, @Nullable X509TrustManager trustManager) {
 		this.sslSocketFactory = sslSocketFactory;
-		this.trustManager = trustManager;
+		this.trustManager = trustManager == null ? DisableValidationTrustManager.INSTANCE : trustManager;
 		return this;
+	}
+
+	public HttpRequest useSSL(SSLSocketFactory sslSocketFactory, X509TrustManager trustManager) {
+		return sslSocketFactory(sslSocketFactory, trustManager);
+	}
+
+	public HttpRequest useSSL() {
+		return useSSL((InputStream) null, null);
+	}
+
+	public HttpRequest useSSL(String keyStoreFile, String keyPass) {
+		return useSSL(keyStoreFile, keyPass, null, null);
+	}
+
+	public HttpRequest useSSL(String keyStoreFile, String keyPass, String trustStoreFile, String trustPass) {
+		Pair<SSLSocketFactory, X509TrustManager> pair = getSslContext(keyStoreFile, keyPass, trustStoreFile, trustPass);
+		return sslSocketFactory(pair.left(), pair.right());
+	}
+
+	public HttpRequest useSSL(InputStream keyStoreInputStream, String keyPass) {
+		return useSSL(keyStoreInputStream, keyPass, null, null);
+	}
+
+	public HttpRequest useSSL(InputStream keyStoreInputStream, String keyPass, InputStream trustInputStream, String trustPass) {
+		Pair<SSLSocketFactory, X509TrustManager> pair = getSslContext(keyStoreInputStream, keyPass, trustInputStream, trustPass);
+		return sslSocketFactory(pair.left(), pair.right());
 	}
 
 	@Override
@@ -545,6 +603,33 @@ public class HttpRequest {
 	}
 
 	/**
+	 * 设置全局日志，平台自带日志，默认 jdk 日志
+	 *
+	 * @param logLevel LogLevel
+	 */
+	public static void setGlobalDefaultLog(LogLevel logLevel) {
+		setGlobalLog(HttpLogger.DEFAULT, logLevel);
+	}
+
+	/**
+	 * 设置全局日志，控制台日志
+	 *
+	 * @param logLevel LogLevel
+	 */
+	public static void setGlobalConsoleLog(LogLevel logLevel) {
+		setGlobalLog(HttpConsoleLogger.INSTANCE, logLevel);
+	}
+
+	/**
+	 * 设置全局日志，默认级别：BODY
+	 *
+	 * @param logger HttpLoggingInterceptor.Logger
+	 */
+	public static void setGlobalLog(HttpLoggingInterceptor.Logger logger) {
+		setGlobalLog(logger, LogLevel.BODY);
+	}
+
+	/**
 	 * 设置全局日志，默认：Slf4j
 	 *
 	 * @param logLevel LogLevel
@@ -553,8 +638,49 @@ public class HttpRequest {
 		setGlobalLog(HttpLogger.Slf4j, logLevel);
 	}
 
-	public static void setGlobalLog(HttpLogger logger, LogLevel logLevel) {
-		HttpRequest.globalLoggingInterceptor = getLoggingInterceptor(logger, logLevel.getLevel());
+	/**
+	 * 设置全局日志
+	 *
+	 * @param logger   HttpLoggingInterceptor.Logger
+	 * @param logLevel LogLevel
+	 */
+	public static void setGlobalLog(HttpLoggingInterceptor.Logger logger, LogLevel logLevel) {
+		HttpRequest.globalLoggingInterceptor = getLoggingInterceptor(logger, logLevel);
+	}
+
+	/**
+	 * 设置全局的 ssl 配置
+	 */
+	public static OkHttpClient setGlobalSSL() {
+		return setGlobalSSL((InputStream) null, null);
+	}
+
+	public static OkHttpClient setGlobalSSL(String keyStoreFile, String keyPass) {
+		return setGlobalSSL(keyStoreFile, keyPass, null, null);
+	}
+
+	public static OkHttpClient setGlobalSSL(String keyStoreFile, String keyPass, String trustStoreFile, String trustPass) {
+		Pair<SSLSocketFactory, X509TrustManager> pair = getSslContext(keyStoreFile, keyPass, trustStoreFile, trustPass);
+		return setGlobalSSL(pair.left(), pair.right());
+	}
+
+	public static OkHttpClient setGlobalSSL(InputStream keyStoreInputStream, String keyPass) {
+		return setGlobalSSL(keyStoreInputStream, keyPass, null, null);
+	}
+
+	public static OkHttpClient setGlobalSSL(InputStream keyStoreInputStream, String keyPass, InputStream trustInputStream, String trustPass) {
+		Pair<SSLSocketFactory, X509TrustManager> pair = getSslContext(keyStoreInputStream, keyPass, trustInputStream, trustPass);
+		return setGlobalSSL(pair.left(), pair.right());
+	}
+
+	public static OkHttpClient setGlobalSSL(SSLSocketFactory sslSocketFactory, X509TrustManager trustManager) {
+		X509TrustManager tm = trustManager == null ? DisableValidationTrustManager.INSTANCE : trustManager;
+		OkHttpClient okHttpClient = httpClient.newBuilder()
+			.sslSocketFactory(sslSocketFactory, tm)
+			.hostnameVerifier(TrustAllHostNames.INSTANCE)
+			.build();
+		setHttpClient(okHttpClient);
+		return okHttpClient;
 	}
 
 	static String handleValue(@Nullable Object value) {
@@ -567,17 +693,116 @@ public class HttpRequest {
 		return String.valueOf(value);
 	}
 
-	private static void disableSslValidation(OkHttpClient.Builder builder) {
+	public static Pair<SSLSocketFactory, X509TrustManager> getSslContext(
+		@Nullable String keyStoreFile, @Nullable String keyPass,
+		@Nullable String trustStoreFile, @Nullable String trustPass
+	) {
+		InputStream keyStoreInputStream;
+		if (keyStoreFile == null) {
+			keyStoreInputStream = null;
+		} else if (keyStoreFile.toLowerCase().startsWith("classpath:")) {
+			keyStoreInputStream = getResourceAsStream(keyStoreFile);
+		} else {
+			keyStoreInputStream = getFileResource(keyStoreFile);
+		}
+		InputStream trustStoreInputStream;
+		if (trustStoreFile == null) {
+			trustStoreInputStream = null;
+		} else if (trustStoreFile.toLowerCase().startsWith("classpath:")) {
+			trustStoreInputStream = getResourceAsStream(trustStoreFile);
+		} else {
+			trustStoreInputStream = getFileResource(trustStoreFile);
+		}
+		return getSslContext(keyStoreInputStream, keyPass, trustStoreInputStream, trustPass);
+	}
+
+	public static Pair<SSLSocketFactory, X509TrustManager> getSslContext(
+		@Nullable InputStream keyStoreInputStream, @Nullable String keyPass,
+		@Nullable InputStream trustInputStream, @Nullable String trustPass
+	) {
 		try {
-			X509TrustManager disabledTrustManager = DisableValidationTrustManager.INSTANCE;
-			TrustManager[] trustManagers = new TrustManager[]{disabledTrustManager};
-			SSLContext sslContext = SSLContext.getInstance("SSL");
-			sslContext.init(null, trustManagers, Holder.SECURE_RANDOM);
-			SSLSocketFactory disabledSslSocketFactory = sslContext.getSocketFactory();
-			builder.sslSocketFactory(disabledSslSocketFactory, disabledTrustManager);
-			builder.hostnameVerifier(TrustAllHostNames.INSTANCE);
-		} catch (NoSuchAlgorithmException | KeyManagementException e) {
-			throw Exceptions.unchecked(e);
+			KeyManager[] kms = null;
+			if (keyStoreInputStream != null) {
+				KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+				KeyStore keyStore = KeyStore.getInstance("JKS");
+				char[] keyPassChars = keyPass == null ? null : keyPass.toCharArray();
+				keyStore.load(keyStoreInputStream, keyPassChars);
+				keyManagerFactory.init(keyStore, keyPassChars);
+				kms = keyManagerFactory.getKeyManagers();
+			}
+			// 证书管理
+			char[] trustPassChars = trustPass == null ? null : trustPass.toCharArray();
+			TrustManager[] tms = getTrustManagers(trustInputStream, trustPassChars);
+			SSLContext sslContext = SSLContext.getInstance("TLS");
+			sslContext.init(kms, tms, new SecureRandom());
+			X509TrustManager trustManager = tms == null ? null : (X509TrustManager) tms[0];
+			return Pair.create(sslContext.getSocketFactory(), trustManager);
+		} catch (Exception e) {
+			throw new IllegalArgumentException(e);
 		}
 	}
+
+	private static TrustManager[] getTrustManagers(@Nullable InputStream trustInputStream, char[] trustPassword)
+		throws NoSuchAlgorithmException, KeyStoreException, CertificateException, IOException {
+		if (trustInputStream == null) {
+			return DisableValidationTrustManager.INSTANCE.getTrustManagers();
+		} else {
+			TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+			KeyStore keyStore = KeyStore.getInstance("JKS");
+			keyStore.load(trustInputStream, trustPassword);
+			trustManagerFactory.init(keyStore);
+			return trustManagerFactory.getTrustManagers();
+		}
+	}
+
+	/**
+	 * 获取ClassPath下的资源做为流
+	 *
+	 * @param path 相对于ClassPath路径，可以以classpath:开头
+	 * @return {@link InputStream}资源
+	 */
+	private static @Nullable InputStream getResourceAsStream(String path) {
+		if (path.toLowerCase().startsWith("classpath:")) {
+			path = path.substring("classpath:".length());
+		}
+		return getClassLoader().getResourceAsStream(path);
+	}
+
+	/**
+	 * 获取 file 下的资源做为流
+	 *
+	 * @param file 文件
+	 * @return {@link InputStream}资源
+	 */
+	private static InputStream getFileResource(String file) {
+		try {
+			return Files.newInputStream(Paths.get(file));
+		} catch (IOException e) {
+			throw new IllegalArgumentException(e);
+		}
+	}
+
+	/**
+	 * 获取{@link ClassLoader}<br>
+	 * 获取顺序如下：<br>
+	 *
+	 * <pre>
+	 * 1、获取当前线程的ContextClassLoader
+	 * 2、获取类对应的ClassLoader
+	 * 3、获取系统ClassLoader（{@link ClassLoader#getSystemClassLoader()}）
+	 * </pre>
+	 *
+	 * @return 类加载器
+	 */
+	private static ClassLoader getClassLoader() {
+		ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+		if (classLoader == null) {
+			classLoader = ResourceUtil.class.getClassLoader();
+			if (null == classLoader) {
+				classLoader = ClassLoader.getSystemClassLoader();
+			}
+		}
+		return classLoader;
+	}
+
 }

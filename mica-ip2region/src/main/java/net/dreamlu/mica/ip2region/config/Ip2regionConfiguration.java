@@ -18,9 +18,10 @@ package net.dreamlu.mica.ip2region.config;
 
 import net.dreamlu.mica.ip2region.core.Ip2regionSearcher;
 import net.dreamlu.mica.ip2region.impl.Ip2regionSearcherImpl;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.core.io.ResourceLoader;
 
 /**
@@ -28,7 +29,8 @@ import org.springframework.core.io.ResourceLoader;
  *
  * @author L.cm
  */
-@Configuration(proxyBeanMethods = false)
+@AutoConfiguration
+@ImportRuntimeHints(Ip2regionRuntimeHintsRegistrar.class)
 @EnableConfigurationProperties(Ip2regionProperties.class)
 public class Ip2regionConfiguration {
 

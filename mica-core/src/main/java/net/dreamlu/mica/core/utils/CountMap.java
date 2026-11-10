@@ -16,7 +16,7 @@
 
 package net.dreamlu.mica.core.utils;
 
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.HashMap;
@@ -32,7 +32,7 @@ public class CountMap {
 	private final Map<Object, AtomicLong> data;
 
 	public CountMap() {
-		this(new HashMap<>());
+		this(new HashMap<>(8));
 	}
 
 	/**
@@ -129,7 +129,7 @@ public class CountMap {
 	 * @return 返回数据大小
 	 */
 	public int size() {
-		return this.data.keySet().size();
+		return this.data.size();
 	}
 
 	/**

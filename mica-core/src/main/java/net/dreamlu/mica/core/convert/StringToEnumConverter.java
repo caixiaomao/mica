@@ -18,11 +18,12 @@ package net.dreamlu.mica.core.convert;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.extern.slf4j.Slf4j;
+import net.dreamlu.mica.core.utils.CollectionUtil;
 import net.dreamlu.mica.core.utils.ConvertUtil;
 import net.dreamlu.mica.core.utils.StringUtil;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.ConditionalGenericConverter;
-import org.springframework.lang.Nullable;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
@@ -83,7 +84,7 @@ public class StringToEnumConverter implements ConditionalGenericConverter {
 			return null;
 		}
 		Class<?> clazz = targetType.getType();
-		AccessibleObject accessibleObject = ENUM_CACHE_MAP.computeIfAbsent(clazz, StringToEnumConverter::getAnnotation);
+		AccessibleObject accessibleObject = CollectionUtil.computeIfAbsent(ENUM_CACHE_MAP, clazz, StringToEnumConverter::getAnnotation);
 		String value = ((String) source).trim();
 		// 如果为null，走默认的转换
 		if (accessibleObject == null) {
@@ -105,15 +106,13 @@ public class StringToEnumConverter implements ConditionalGenericConverter {
 	@Nullable
 	private static Object invoke(Class<?> clazz, AccessibleObject accessibleObject, String value)
 		throws IllegalAccessException, InvocationTargetException, InstantiationException {
-		if (accessibleObject instanceof Constructor) {
-			Constructor constructor = (Constructor) accessibleObject;
+		if (accessibleObject instanceof Constructor constructor) {
 			Class<?> paramType = constructor.getParameterTypes()[0];
 			// 类型转换
 			Object object = ConvertUtil.convert(value, paramType);
 			return constructor.newInstance(object);
 		}
-		if (accessibleObject instanceof Method) {
-			Method method = (Method) accessibleObject;
+		if (accessibleObject instanceof Method method) {
 			Class<?> paramType = method.getParameterTypes()[0];
 			// 类型转换
 			Object object = ConvertUtil.convert(value, paramType);

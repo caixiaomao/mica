@@ -50,7 +50,7 @@ public class InMemoryJavaCompiler {
 		MemoryJavaFileObject file = new MemoryJavaFileObject(className, sourceCode);
 		CompilationTask task = getCompilationTask(file);
 
-		if (!task.call()) {
+		if (Boolean.FALSE.equals(task.call())) {
 			throw new IllegalArgumentException("Could not compile " + className + " with source code :\t" + sourceCode);
 		}
 

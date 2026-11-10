@@ -17,20 +17,20 @@
 package net.dreamlu.mica.core.beans;
 
 import net.dreamlu.mica.core.utils.BeanUtil;
-import net.dreamlu.mica.core.utils.ClassUtil;
+import net.dreamlu.mica.core.utils.CollectionUtil;
 import net.dreamlu.mica.core.utils.ReflectUtil;
 import net.dreamlu.mica.core.utils.StringUtil;
+import org.jspecify.annotations.Nullable;
 import org.springframework.asm.ClassVisitor;
 import org.springframework.asm.Label;
 import org.springframework.asm.Opcodes;
 import org.springframework.asm.Type;
 import org.springframework.cglib.core.*;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ClassUtils;
 
 import java.beans.PropertyDescriptor;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 import java.util.Map;
@@ -48,8 +48,9 @@ import java.util.concurrent.ConcurrentMap;
  * @author L.cm
  */
 public abstract class MicaBeanCopier {
+	private static final String BEAN_NAME_PREFIX = MicaBeanCopier.class.getName();
 	private static final Type CONVERTER = TypeUtils.parseType(Converter.class.getName());
-	private static final Type BEAN_COPIER = TypeUtils.parseType(MicaBeanCopier.class.getName());
+	private static final Type BEAN_COPIER = TypeUtils.parseType(BEAN_NAME_PREFIX);
 	private static final Type BEAN_MAP = TypeUtils.parseType(Map.class.getName());
 	private static final Signature COPY = new Signature("copy", Type.VOID_TYPE, new Type[]{Constants.TYPE_OBJECT, Constants.TYPE_OBJECT, CONVERTER});
 	private static final Signature CONVERT = TypeUtils.parseSignature("Object convert(Object, Class, Object)");
@@ -68,13 +69,12 @@ public abstract class MicaBeanCopier {
 	public static MicaBeanCopier create(Class source, Class target, boolean useConverter, boolean nonNull) {
 		MicaBeanCopierKey copierKey = new MicaBeanCopierKey(source, target, useConverter, nonNull);
 		// 利用 ConcurrentMap 缓存 提高性能，接近 直接 get set
-		return BEAN_COPIER_MAP.computeIfAbsent(copierKey, key -> {
-			Generator gen = new Generator();
-			gen.setSource(key.getSource());
-			gen.setTarget(key.getTarget());
-			gen.setUseConverter(key.isUseConverter());
-			gen.setNonNull(key.isNonNull());
-			return gen.create(key);
+		return CollectionUtil.computeIfAbsent(BEAN_COPIER_MAP, copierKey, key -> {
+			Generator gen = new Generator(key);
+			gen.setContextClass(MicaBeanCopier.class);
+			gen.setNamePrefix(BEAN_NAME_PREFIX);
+			gen.setUseCache(true);
+			return gen.create();
 		});
 	}
 
@@ -85,39 +85,29 @@ public abstract class MicaBeanCopier {
 	 * @param to to Bean
 	 * @param converter Converter
 	 */
-	abstract public void copy(Object from, Object to, @Nullable Converter converter);
+	public abstract void copy(Object from, Object to, @Nullable Converter converter);
 
 	public static class Generator extends AbstractClassGenerator {
-		private static final Source SOURCE = new Source(MicaBeanCopier.class.getName());
-		private Class source;
-		private Class target;
-		private boolean useConverter;
-		private boolean nonNull;
+		private static final Source SOURCE = new Source(BEAN_NAME_PREFIX);
+		private final MicaBeanCopierKey copierKey;
+		private final Class source;
+		private final Class target;
+		private final boolean useConverter;
+		private final boolean nonNull;
+		private String className;
 
-		Generator() {
+		Generator(MicaBeanCopierKey copierKey) {
 			super(SOURCE);
+			this.copierKey = copierKey;
+			this.source = copierKey.source();
+			this.target = copierKey.target();
+			this.useConverter = copierKey.useConverter();
+			this.nonNull = copierKey.nonNull();
 		}
 
-		public void setSource(Class source) {
-			if (!Modifier.isPublic(source.getModifiers())) {
-				setNamePrefix(source.getName());
-			}
-			this.source = source;
-		}
-
-		public void setTarget(Class target) {
-			if (!Modifier.isPublic(target.getModifiers())) {
-				setNamePrefix(target.getName());
-			}
-			this.target = target;
-		}
-
-		public void setUseConverter(boolean useConverter) {
-			this.useConverter = useConverter;
-		}
-
-		public void setNonNull(boolean nonNull) {
-			this.nonNull = nonNull;
+		@Override
+		public void setNamePrefix(String namePrefix) {
+			super.setNamePrefix(namePrefix);
 		}
 
 		@Override
@@ -131,9 +121,8 @@ public abstract class MicaBeanCopier {
 			return ReflectUtils.getProtectionDomain(source);
 		}
 
-		@Override
-		public MicaBeanCopier create(Object key) {
-			return (MicaBeanCopier) super.create(key);
+		public MicaBeanCopier create() {
+			return (MicaBeanCopier) super.create(copierKey);
 		}
 
 		@Override
@@ -141,15 +130,15 @@ public abstract class MicaBeanCopier {
 			Type sourceType = Type.getType(source);
 			Type targetType = Type.getType(target);
 			ClassEmitter ce = new ClassEmitter(v);
-			ce.begin_class(Constants.V1_2,
-				Constants.ACC_PUBLIC,
-				getClassName(),
+			ce.begin_class(Opcodes.V1_2,
+				Opcodes.ACC_PUBLIC,
+				this.className,
 				BEAN_COPIER,
 				null,
 				Constants.SOURCE_FILE);
 
 			EmitUtils.null_constructor(ce);
-			CodeEmitter e = ce.begin_method(Constants.ACC_PUBLIC, COPY, null);
+			CodeEmitter e = ce.begin_method(Opcodes.ACC_PUBLIC, COPY, null);
 
 			// map 单独处理
 			if (Map.class.isAssignableFrom(source)) {
@@ -209,7 +198,7 @@ public abstract class MicaBeanCopier {
 				// nonNull Label
 				Label l0 = e.make_label();
 				// 判断类型是否一致，包括 包装类型
-				if (ClassUtil.isAssignable(setterPropertyType, getterPropertyType)) {
+				if (ClassUtils.isAssignable(setterPropertyType, getterPropertyType)) {
 					// 2018.12.27 by L.cm 支持链式 bean
 					e.load_local(targetLocal);
 					e.load_local(sourceLocal);
@@ -263,7 +252,7 @@ public abstract class MicaBeanCopier {
 					}
 
 					EmitUtils.load_class(e, setterType);
-					// 更改成了属性名，之前是 set 方法名
+					// 更改成了属性名，cglib 默认是 set 方法名
 					e.push(propName);
 					e.invoke_interface(CONVERTER, CONVERT);
 					e.unbox_or_zero(setterType);
@@ -300,6 +289,25 @@ public abstract class MicaBeanCopier {
 			return instance;
 		}
 
+		@Override
+		protected Class generate(ClassLoaderData data) {
+			// 生成类名
+			this.className = generateClassName(data);
+			try {
+				return MethodHandles.lookup()
+					.defineClass(DefaultGeneratorStrategy.INSTANCE.generate(this))
+					.asSubclass(MicaBeanCopier.class);
+			}  catch (Exception ex) {
+				throw new CodeGenerationException(ex);
+			}
+		}
+
+		private String generateClassName(ClassLoaderData data) {
+			String name = DefaultNamingPolicy.INSTANCE.getClassName(BEAN_NAME_PREFIX, BEAN_NAME_PREFIX, copierKey, data.getUniqueNamePredicate());
+			data.reserveName(name);
+			return name;
+		}
+
 		/**
 		 * 处理 map 的 copy
 		 * @param ce ClassEmitter
@@ -307,7 +315,7 @@ public abstract class MicaBeanCopier {
 		 * @param sourceType sourceType
 		 * @param targetType targetType
 		 */
-		public void generateClassFormMap(ClassEmitter ce, CodeEmitter e, Type sourceType, Type targetType) {
+		private void generateClassFormMap(ClassEmitter ce, CodeEmitter e, Type sourceType, Type targetType) {
 			// 2018.12.27 by L.cm 支持链式 bean
 			PropertyDescriptor[] setters = ReflectUtil.getBeanSetters(target);
 

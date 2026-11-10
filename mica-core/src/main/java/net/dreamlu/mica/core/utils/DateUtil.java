@@ -16,8 +16,7 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.time.*;
 import java.time.chrono.ChronoLocalDateTime;
@@ -33,7 +32,6 @@ import static java.time.temporal.ChronoField.*;
  *
  * @author L.cm
  */
-@UtilityClass
 public class DateUtil {
 	public static final String PATTERN_DATETIME = DatePattern.NORM_DATETIME_PATTERN;
 	public static final String PATTERN_DATE = DatePattern.NORM_DATE_PATTERN;
@@ -152,8 +150,8 @@ public class DateUtil {
 	 * @return 设置后的时间
 	 */
 	public static Date plusAtUtc(Date date, TemporalAmount amount) {
-		Objects.requireNonNull(date, "The date must not be null");
-		Instant instant = date.toInstant()
+		Instant instant = Objects.requireNonNull(date, "The date must not be null")
+			.toInstant()
 			.atZone(ZoneOffset.UTC)
 			.plus(amount)
 			.toInstant();
@@ -168,8 +166,8 @@ public class DateUtil {
 	 * @return 设置后的时间
 	 */
 	public static Date plus(Date date, TemporalAmount amount) {
-		Objects.requireNonNull(date, "The date must not be null");
-		Instant instant = date.toInstant()
+		Instant instant = Objects.requireNonNull(date, "The date must not be null")
+			.toInstant()
 			.plus(amount);
 		return Date.from(instant);
 	}
@@ -281,8 +279,8 @@ public class DateUtil {
 	 * @return 设置后的时间
 	 */
 	public static Date minusAtUtc(Date date, TemporalAmount amount) {
-		Objects.requireNonNull(date, "The date must not be null");
-		Instant instant = date.toInstant()
+		Instant instant = Objects.requireNonNull(date, "The date must not be null")
+			.toInstant()
 			.atZone(ZoneOffset.UTC)
 			.minus(amount)
 			.toInstant();
@@ -297,8 +295,8 @@ public class DateUtil {
 	 * @return 设置后的时间
 	 */
 	public static Date minus(Date date, TemporalAmount amount) {
-		Objects.requireNonNull(date, "The date must not be null");
-		Instant instant = date.toInstant()
+		Instant instant = Objects.requireNonNull(date, "The date must not be null")
+			.toInstant()
 			.minus(amount);
 		return Date.from(instant);
 	}
@@ -370,7 +368,6 @@ public class DateUtil {
 	 * @param formatter 格式化
 	 * @return 格式化后的时间
 	 */
-	@Nullable
 	public static String format(Instant instant, DateTimeFormatter formatter) {
 		ZoneId zone = formatter.getZone();
 		if (zone == null) {
@@ -702,7 +699,7 @@ public class DateUtil {
 	 * @param parsePatterns 时间正则数组
 	 * @return 时间
 	 */
-	public static LocalDateTime parseDateTime(@Nullable CharSequence text, @Nullable String[] parsePatterns) {
+	public static LocalDateTime parseDateTime(@Nullable CharSequence text, String @Nullable [] parsePatterns) {
 		return parseDateTime(text, null, parsePatterns);
 	}
 
@@ -714,7 +711,7 @@ public class DateUtil {
 	 * @param parsePatterns 时间正则数组
 	 * @return 时间
 	 */
-	public static LocalDateTime parseDateTime(@Nullable CharSequence text, @Nullable Locale locale, @Nullable String[] parsePatterns) {
+	public static LocalDateTime parseDateTime(@Nullable CharSequence text, @Nullable Locale locale, String @Nullable [] parsePatterns) {
 		return parse(text, locale, parsePatterns, LocalDateTime::from);
 	}
 
@@ -758,7 +755,7 @@ public class DateUtil {
 	 * @param parsePatterns 时间正则数组
 	 * @return 时间
 	 */
-	public static LocalDate parseDate(@Nullable CharSequence text, @Nullable String[] parsePatterns) {
+	public static LocalDate parseDate(@Nullable CharSequence text, String @Nullable [] parsePatterns) {
 		return parseDate(text, null, parsePatterns);
 	}
 
@@ -770,7 +767,7 @@ public class DateUtil {
 	 * @param parsePatterns 时间正则数组
 	 * @return 时间
 	 */
-	public static LocalDate parseDate(@Nullable CharSequence text, @Nullable Locale locale, @Nullable String[] parsePatterns) {
+	public static LocalDate parseDate(@Nullable CharSequence text, @Nullable Locale locale, String @Nullable [] parsePatterns) {
 		return parse(text, locale, parsePatterns, LocalDate::from);
 	}
 
@@ -814,7 +811,7 @@ public class DateUtil {
 	 * @param parsePatterns 时间正则数组
 	 * @return 时间
 	 */
-	public static LocalTime parseTime(@Nullable CharSequence text, @Nullable String[] parsePatterns) {
+	public static LocalTime parseTime(@Nullable CharSequence text, String @Nullable [] parsePatterns) {
 		return parseTime(text, null, parsePatterns);
 	}
 
@@ -826,7 +823,7 @@ public class DateUtil {
 	 * @param parsePatterns 时间正则数组
 	 * @return 时间
 	 */
-	public static LocalTime parseTime(@Nullable CharSequence text, @Nullable Locale locale, @Nullable String[] parsePatterns) {
+	public static LocalTime parseTime(@Nullable CharSequence text, @Nullable Locale locale, String @Nullable [] parsePatterns) {
 		return parse(text, locale, parsePatterns, LocalTime::from);
 	}
 
@@ -840,13 +837,13 @@ public class DateUtil {
 	 * @param <T>           泛型
 	 * @return 时间
 	 */
-	public static <T> T parse(@Nullable CharSequence text, @Nullable Locale locale, @Nullable String[] parsePatterns, TemporalQuery<T> query) {
+	public static <T> T parse(@Nullable CharSequence text, @Nullable Locale locale, String @Nullable [] parsePatterns, TemporalQuery<T> query) {
 		if (text == null || parsePatterns == null) {
 			throw new IllegalArgumentException("Date and Patterns must not be null");
 		}
 		final Locale lcl = locale == null ? Locale.getDefault() : locale;
 		final ZoneId systemZone = ZoneId.systemDefault();
-		DateTimeFormatter formatter = null;
+		DateTimeFormatter formatter;
 		for (final String parsePattern : parsePatterns) {
 			formatter = DateTimeFormatter.ofPattern(parsePattern, lcl).withZone(systemZone);
 			try {
@@ -861,7 +858,7 @@ public class DateUtil {
 	/**
 	 * 支持日期、时间、时间日期格式转换成 Instant
 	 */
-	private static final TemporalQuery<Instant> INSTANT_QUERY = new TemporalQuery<Instant>() {
+	private static final TemporalQuery<Instant> INSTANT_QUERY = new TemporalQuery<>() {
 
 		@Nullable
 		@Override

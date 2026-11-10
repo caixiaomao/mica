@@ -16,13 +16,12 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
-import org.springframework.util.PatternMatchUtils;
-import org.springframework.util.StringUtils;
+import org.jspecify.annotations.Nullable;
+import org.springframework.lang.Contract;
+import org.springframework.util.*;
 import org.springframework.web.util.HtmlUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
@@ -36,12 +35,11 @@ import java.util.stream.Stream;
  *
  * @author L.cm
  */
-@UtilityClass
 public class StringUtil extends org.springframework.util.StringUtils {
 	/**
 	 * 特殊字符正则，sql特殊字符和空白符
 	 */
-	private final static Pattern SPECIAL_CHARS_REGEX = Pattern.compile("[`'\"|/,;()-+*%#·•�　\\s]");
+	private static final Pattern SPECIAL_CHARS_REGEX = Pattern.compile("[`'\"|/,;()-+*%#·•�　\\s]");
 	/**
 	 * <p>The maximum size to which the padding constant(s) can expand.</p>
 	 */
@@ -97,8 +95,9 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * its length is greater than 0, and it does not contain whitespace only
 	 * @see Character#isWhitespace
 	 */
+	@Contract("null -> true")
 	public static boolean isBlank(@Nullable final CharSequence cs) {
-		return !StringUtil.hasText(cs);
+		return !StringUtils.hasText(cs);
 	}
 
 	/**
@@ -116,8 +115,9 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * not empty and not null and not whitespace
 	 * @see Character#isWhitespace
 	 */
+	@Contract("null -> false")
 	public static boolean isNotBlank(@Nullable final CharSequence cs) {
-		return StringUtil.hasText(cs);
+		return StringUtils.hasText(cs);
 	}
 
 	/**
@@ -126,8 +126,9 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @param css CharSequence
 	 * @return boolean
 	 */
+	@Contract("null -> true")
 	public static boolean isAnyBlank(final CharSequence... css) {
-		if (ObjectUtil.isEmpty(css)) {
+		if (ObjectUtils.isEmpty(css)) {
 			return true;
 		}
 		return Stream.of(css).anyMatch(StringUtil::isBlank);
@@ -139,8 +140,9 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @param css CharSequence
 	 * @return boolean
 	 */
+	@Contract("null -> true")
 	public static boolean isAnyBlank(Collection<CharSequence> css) {
-		if (CollectionUtil.isEmpty(css)) {
+		if (CollectionUtils.isEmpty(css)) {
 			return true;
 		}
 		return css.stream().anyMatch(StringUtil::isBlank);
@@ -152,8 +154,9 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @param css CharSequence
 	 * @return boolean
 	 */
+	@Contract("null -> false")
 	public static boolean isNoneBlank(final CharSequence... css) {
-		if (ObjectUtil.isEmpty(css)) {
+		if (ObjectUtils.isEmpty(css)) {
 			return false;
 		}
 		return Stream.of(css).allMatch(StringUtil::isNotBlank);
@@ -165,37 +168,40 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @param css CharSequence
 	 * @return boolean
 	 */
+	@Contract("null -> false")
 	public static boolean isNoneBlank(Collection<CharSequence> css) {
-		if (CollectionUtil.isEmpty(css)) {
+		if (CollectionUtils.isEmpty(css)) {
 			return false;
 		}
 		return css.stream().allMatch(StringUtil::isNotBlank);
 	}
 
 	/**
-	 * 有 任意 一个 Blank
+	 * 有 任意 一个不为 Blank
 	 *
 	 * @param css CharSequence
 	 * @return boolean
 	 */
+	@Contract("null -> false")
 	public static boolean isAnyNotBlank(CharSequence... css) {
-		if (ObjectUtil.isEmpty(css)) {
+		if (ObjectUtils.isEmpty(css)) {
 			return false;
 		}
-		return Stream.of(css).anyMatch(StringUtil::isNoneBlank);
+		return Stream.of(css).anyMatch(StringUtil::isNotBlank);
 	}
 
 	/**
-	 * 有 任意 一个 Blank
+	 * 有 任意 一个不为 Blank
 	 *
 	 * @param css CharSequence
 	 * @return boolean
 	 */
+	@Contract("null -> false")
 	public static boolean isAnyNotBlank(Collection<CharSequence> css) {
-		if (CollectionUtil.isEmpty(css)) {
+		if (CollectionUtils.isEmpty(css)) {
 			return false;
 		}
-		return css.stream().anyMatch(StringUtil::isNoneBlank);
+		return css.stream().anyMatch(StringUtil::isNotBlank);
 	}
 
 	/**
@@ -204,17 +210,17 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @param cs the CharSequence to check, may be null
 	 * @return {boolean}
 	 */
-	public static boolean isNumeric(final CharSequence cs) {
-		if (StringUtil.isBlank(cs)) {
-			return false;
-		}
-		for (int i = cs.length(); --i >= 0; ) {
-			int chr = cs.charAt(i);
-			if (chr < 48 || chr > 57) {
+	@Contract("null -> false")
+	public static boolean isNumeric(@Nullable final CharSequence cs) {
+		if (StringUtils.hasText(cs)) {
+			try {
+				Double.parseDouble(cs.toString().trim());
+				return true;
+			} catch (NumberFormatException ignored) {
 				return false;
 			}
 		}
-		return true;
+		return false;
 	}
 
 	/**
@@ -263,7 +269,7 @@ public class StringUtil extends org.springframework.util.StringUtils {
 		for (int start, end; (start = message.indexOf(StringPool.DOLLAR_LEFT_BRACE, cursor)) != -1 && (end = message.indexOf(CharPool.RIGHT_BRACE, start)) != -1; ) {
 			sb.append(message, cursor, start);
 			String key = message.substring(start + 2, end);
-			Object value = params.get(StringUtil.trimWhitespace(key));
+			Object value = params.get(key.trim());
 			sb.append(value == null ? StringPool.EMPTY : value);
 			cursor = end + 1;
 		}
@@ -330,7 +336,7 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @return the delimited {@code String}
 	 */
 	public static String join(Collection<?> coll) {
-		return StringUtil.collectionToCommaDelimitedString(coll);
+		return StringUtils.collectionToCommaDelimitedString(coll);
 	}
 
 	/**
@@ -342,7 +348,7 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @return the delimited {@code String}
 	 */
 	public static String join(Collection<?> coll, String delim) {
-		return StringUtil.collectionToDelimitedString(coll, delim);
+		return StringUtils.collectionToDelimitedString(coll, delim);
 	}
 
 	/**
@@ -354,7 +360,7 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @return the delimited {@code String}
 	 */
 	public static String join(Object[] arr) {
-		return StringUtil.arrayToCommaDelimitedString(arr);
+		return StringUtils.arrayToCommaDelimitedString(arr);
 	}
 
 	/**
@@ -366,7 +372,7 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @return the delimited {@code String}
 	 */
 	public static String join(Object[] arr, String delim) {
-		return StringUtil.arrayToDelimitedString(arr, delim);
+		return StringUtils.arrayToDelimitedString(arr, delim);
 	}
 
 	/**
@@ -377,7 +383,7 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @return 字符串数组
 	 */
 	public static String[] split(@Nullable String str, @Nullable String delimiter) {
-		return StringUtil.delimitedListToStringArray(str, delimiter);
+		return StringUtils.delimitedListToStringArray(str, delimiter);
 	}
 
 	/**
@@ -388,7 +394,7 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 * @return 字符串数组
 	 */
 	public static String[] splitTrim(@Nullable String str, @Nullable String delimiter) {
-		return StringUtil.delimitedListToStringArray(str, delimiter, " \t\n\n\f");
+		return StringUtils.delimitedListToStringArray(str, delimiter, " \t\n\n\f");
 	}
 
 	/**
@@ -422,31 +428,132 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	}
 
 	/**
-	 * 生成uuid，采用 jdk 9 的形式，优化性能
+	 * 生成 uuid，随机位数是普通 uuid 的一倍，冲突概率更小
 	 *
 	 * @return UUID
 	 */
 	public static String getUUID() {
-		ThreadLocalRandom random = ThreadLocalRandom.current();
-		long lsb = random.nextLong();
-		long msb = random.nextLong();
-		byte[] buf = new byte[32];
-		formatUnsignedLong(lsb, buf, 20, 12);
-		formatUnsignedLong(lsb >>> 48, buf, 16, 4);
-		formatUnsignedLong(msb, buf, 12, 4);
-		formatUnsignedLong(msb >>> 16, buf, 8, 4);
-		formatUnsignedLong(msb >>> 32, buf, 0, 8);
-		return new String(buf, Charsets.UTF_8);
+		return getId(ThreadLocalRandom.current(), 32, 16);
 	}
 
-	private static void formatUnsignedLong(long val, byte[] buf, int offset, int len) {
-		int charPos = offset + len;
+	/**
+	 * 生成安全的 uuid（冲突概率小），采用 jdk 9 的形式，优化性能
+	 *
+	 * @return UUID
+	 */
+	public static String getSafeUUID() {
+		long lsb = Holder.SECURE_RANDOM.nextLong();
+		long msb = Holder.SECURE_RANDOM.nextLong();
+		byte[] buf = new byte[32];
 		int radix = 1 << 4;
+		formatUnsignedLong(lsb, radix, buf, 20, 12);
+		formatUnsignedLong(lsb >>> 48, radix, buf, 16, 4);
+		formatUnsignedLong(msb, radix, buf, 12, 4);
+		formatUnsignedLong(msb >>> 16, radix, buf, 8, 4);
+		formatUnsignedLong(msb >>> 32, radix, buf, 0, 8);
+		return new String(buf, StandardCharsets.ISO_8859_1);
+	}
+
+	private static void formatUnsignedLong(long val, int radix, byte[] buf, int offset, int len) {
+		int charPos = offset + len;
 		int mask = radix - 1;
 		do {
 			buf[--charPos] = NumberUtil.DIGITS[((int) val) & mask];
 			val >>>= 4;
 		} while (charPos > offset);
+	}
+
+	/**
+	 * 一个小巧、安全、URL友好、21 位的字符串ID生成器。包含数字、大写、小写字母、_、-
+	 *
+	 * @return NanoId
+	 */
+	public static String getNanoId() {
+		return getNanoId(ThreadLocalRandom.current(), true);
+	}
+
+	/**
+	 * 一个小巧、安全、URL友好、21 位的字符串ID生成器，62 进制，只包含数字、大写、小写字母
+	 *
+	 * @return NanoId
+	 */
+	public static String getNanoId62() {
+		return getNanoId(ThreadLocalRandom.current(), false);
+	}
+
+	/**
+	 * 一个小巧、安全、URL友好、21 位的字符串ID生成器。包含数字、大写、小写字母、_、-
+	 *
+	 * @return NanoId
+	 */
+	public static String getSafeNanoId() {
+		return getNanoId(Holder.SECURE_RANDOM, true);
+	}
+
+	/**
+	 * 一个小巧、安全、URL友好、21 位的字符串ID生成器，62 进制，只包含数字、大写、小写字母
+	 *
+	 * @return NanoId
+	 */
+	public static String getSafeNanoId62() {
+		return getNanoId(Holder.SECURE_RANDOM, false);
+	}
+
+	private static String getNanoId(Random random, boolean radix64) {
+		return getId(random, 21, radix64 ? 64 : 62);
+	}
+
+	/**
+	 * 获取一个快速生成的随机 id，包含数字，大小写，同长度比 uuid 冲突概率更小得多
+	 *
+	 * @param len 为了减少冲突，len 需要大于7，实际尽量设置在10~16或以上。
+	 * @return id 字符串
+	 */
+	public static String getFastId(int len) {
+		return getId(ThreadLocalRandom.current(), len, 62);
+	}
+
+	/**
+	 * 获取一个安全的随机 id，包含数字，大小写，同长度比 uuid 冲突概率更小得多
+	 *
+	 * @param len 为了减少冲突，len 需要大于7，实际尽量设置在10~16或以上。
+	 * @return id 字符串
+	 */
+	public static String getSafeId(int len) {
+		return getId(Holder.SECURE_RANDOM, len, 62);
+	}
+
+	/**
+	 * 获取一个生成的随机 id，同长度比 uuid 冲突概率更小得多
+	 *
+	 * @param random Random
+	 * @param len    为了减少冲突，len 需要大于7，实际尽量设置在10~16或以上。
+	 * @return id 字符串
+	 */
+	public static String getId(Random random, int len) {
+		return getId(random, len, 62);
+	}
+
+	/**
+	 * 获取一个生成的随机 id，同长度比 uuid 冲突概率更小得多
+	 *
+	 * @param random Random
+	 * @param len    为了减少冲突，len 需要大于7，实际尽量设置在10~16或以上。
+	 * @param radix  radix，36 包含字母和数字，62 包含大写字母
+	 * @return id 字符串
+	 */
+	public static String getId(Random random, int len, int radix) {
+		if (len < 8) {
+			throw new IllegalArgumentException("为了减少冲突，len 需要大于7，实际尽量设置在10~16或以上。");
+		}
+		byte[] randomBytes = new byte[len];
+		random.nextBytes(randomBytes);
+		int mask = radix - 1;
+		for (int i = 0; i < len; i++) {
+			int value = randomBytes[i] & 0xff;
+			randomBytes[i] = NumberUtil.DIGITS[value % mask];
+		}
+		return new String(randomBytes, StandardCharsets.ISO_8859_1);
 	}
 
 	/**
@@ -457,6 +564,16 @@ public class StringUtil extends org.springframework.util.StringUtils {
 	 */
 	public static String escapeHtml(String html) {
 		return HtmlUtils.htmlEscape(html);
+	}
+
+	/**
+	 * HTML 反转义
+	 *
+	 * @param input 要反转义的字符串
+	 * @return 结果
+	 */
+	public static String htmlUnescape(String input) {
+		return HtmlUtils.htmlUnescape(input);
 	}
 
 	/**
@@ -517,12 +634,11 @@ public class StringUtil extends org.springframework.util.StringUtils {
 		}
 		Assert.isTrue(count > 0, "Requested random string length " + count + " is less than 0.");
 		final Random random = Holder.SECURE_RANDOM;
-		char[] buffer = new char[count];
+		byte[] buffer = new byte[count];
 		for (int i = 0; i < count; i++) {
-			String factor = randomType.getFactor();
-			buffer[i] = factor.charAt(random.nextInt(factor.length()));
+			buffer[i] = randomType.random(random);
 		}
-		return new String(buffer);
+		return new String(buffer, StandardCharsets.ISO_8859_1);
 	}
 
 	/**
@@ -722,7 +838,7 @@ public class StringUtil extends org.springframework.util.StringUtils {
 		if (str == null) {
 			return null;
 		}
-		if (!StringUtil.hasLength(padStr)) {
+		if (!StringUtils.hasLength(padStr)) {
 			padStr = StringPool.SPACE;
 		}
 		final int padLen = padStr.length();
@@ -926,5 +1042,29 @@ public class StringUtil extends org.springframework.util.StringUtils {
 		return text.startsWith("http://") || text.startsWith("https://");
 	}
 
+	/**
+	 * Returns either the passed in CharSequence, or if the CharSequence is
+	 * whitespace, empty ("") or {@code null}, the value of {@code defaultStr}.
+	 *
+	 * <p>Whitespace is defined by {@link Character#isWhitespace(char)}.</p>
+	 *
+	 * <pre>
+	 * StringUtils.defaultIfBlank(null, "NULL")  = "NULL"
+	 * StringUtils.defaultIfBlank("", "NULL")    = "NULL"
+	 * StringUtils.defaultIfBlank(" ", "NULL")   = "NULL"
+	 * StringUtils.defaultIfBlank("bat", "NULL") = "bat"
+	 * StringUtils.defaultIfBlank("", null)      = null
+	 * </pre>
+	 *
+	 * @param <T>        the specific kind of CharSequence
+	 * @param str        the CharSequence to check, may be null
+	 * @param defaultStr the default CharSequence to return
+	 *                   if the input is whitespace, empty ("") or {@code null}, may be null
+	 * @return the passed in CharSequence, or the default
+	 */
+	@Nullable
+	public static <T extends CharSequence> T defaultIfBlank(@Nullable final T str, @Nullable final T defaultStr) {
+		return isBlank(str) ? defaultStr : str;
+	}
 }
 

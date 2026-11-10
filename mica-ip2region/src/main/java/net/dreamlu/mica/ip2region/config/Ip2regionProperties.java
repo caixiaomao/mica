@@ -29,12 +29,18 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 @Getter
 @Setter
 @RefreshScope
-@ConfigurationProperties(prefix = "mica.ip2region")
+@ConfigurationProperties(Ip2regionProperties.PREFIX)
 public class Ip2regionProperties {
+	public static final String PREFIX = "mica.ip2region";
 
 	/**
-	 * ip2region.db 文件路径
+	 * ip2region_v4.xdb 文件路径
 	 */
-	private String dbFileLocation = "classpath:ip2region/ip2region.db";
+	private String ipv4xdbFileLocation = "classpath:ip2region/ip2region_v4.xdb";
+
+	/**
+	 * ip2region_v6.xdb 文件路径
+	 */
+	private String ipv6xdbFileLocation = "classpath:ip2region/ip2region_v6.xdb";
 
 }

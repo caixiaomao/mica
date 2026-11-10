@@ -16,19 +16,19 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.springframework.util.ResourceUtils;
+import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 /**
  * 用来获取各种目录
  *
  * @author L.cm
  */
-@UtilityClass
 public class PathUtil {
 
 	/**
@@ -47,10 +47,10 @@ public class PathUtil {
 	}
 
 	@Nullable
-	public static String toFilePath(@Nullable URL url) {
+	private static String toFilePath(@Nullable URL url) {
 		if (url == null) { return null; }
 		String protocol = url.getProtocol();
-		String file = UrlUtil.decode(url.getPath(), Charsets.UTF_8);
+		String file = StringUtils.uriDecode(url.getPath(), StandardCharsets.UTF_8);
 		if (ResourceUtils.URL_PROTOCOL_FILE.equals(protocol)) {
 			return new File(file).getParentFile().getParentFile().getAbsolutePath();
 		} else if (ResourceUtils.URL_PROTOCOL_JAR.equals(protocol)

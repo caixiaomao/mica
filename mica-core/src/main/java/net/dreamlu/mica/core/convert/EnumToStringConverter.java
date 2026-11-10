@@ -18,10 +18,11 @@ package net.dreamlu.mica.core.convert;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.extern.slf4j.Slf4j;
+import net.dreamlu.mica.core.utils.CollectionUtil;
 import net.dreamlu.mica.core.utils.ConvertUtil;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.core.convert.converter.ConditionalGenericConverter;
-import org.springframework.lang.Nullable;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
@@ -72,11 +73,7 @@ public class EnumToStringConverter implements ConditionalGenericConverter {
 
 	@Override
 	public Set<ConvertiblePair> getConvertibleTypes() {
-		Set<ConvertiblePair> pairSet = new HashSet<>(3);
-		pairSet.add(new ConvertiblePair(Enum.class, String.class));
-		pairSet.add(new ConvertiblePair(Enum.class, Integer.class));
-		pairSet.add(new ConvertiblePair(Enum.class, Long.class));
-		return Collections.unmodifiableSet(pairSet);
+		return Set.of(new ConvertiblePair(Enum.class, String.class), new ConvertiblePair(Enum.class, Integer.class), new ConvertiblePair(Enum.class, Long.class));
 	}
 
 	@Nullable
@@ -86,7 +83,7 @@ public class EnumToStringConverter implements ConditionalGenericConverter {
 			return null;
 		}
 		Class<?> sourceClazz = sourceType.getType();
-		AccessibleObject accessibleObject = ENUM_CACHE_MAP.computeIfAbsent(sourceClazz, EnumToStringConverter::getAnnotation);
+		AccessibleObject accessibleObject = CollectionUtil.computeIfAbsent(ENUM_CACHE_MAP, sourceClazz, EnumToStringConverter::getAnnotation);
 		Class<?> targetClazz = targetType.getType();
 		// 如果为null，走默认的转换
 		if (accessibleObject == null) {
@@ -108,11 +105,9 @@ public class EnumToStringConverter implements ConditionalGenericConverter {
 	private static Object invoke(Class<?> clazz, AccessibleObject accessibleObject, Object source, Class<?> targetClazz)
 		throws IllegalAccessException, InvocationTargetException {
 		Object value = null;
-		if (accessibleObject instanceof Field) {
-			Field field = (Field) accessibleObject;
+		if (accessibleObject instanceof Field field) {
 			value = field.get(source);
-		} else if (accessibleObject instanceof Method) {
-			Method method = (Method) accessibleObject;
+		} else if (accessibleObject instanceof Method method) {
 			Class<?> paramType = method.getParameterTypes()[0];
 			// 类型转换
 			Object object = ConvertUtil.convert(source, paramType);

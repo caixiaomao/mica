@@ -16,13 +16,13 @@
 
 package net.dreamlu.mica.http;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.type.CollectionLikeType;
 import net.dreamlu.mica.core.utils.JsonUtil;
 import okhttp3.*;
+import org.jspecify.annotations.Nullable;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.JsonNode;
 
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -30,9 +30,11 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
- * 相应接口
+ * 响应接口
  *
  * @author L.cm
  */
@@ -57,8 +59,24 @@ public interface ResponseSpec {
 	 *
 	 * @return boolean
 	 */
-	default boolean isOk() {
-		return false;
+	boolean isOk();
+
+	/**
+	 * Returns the HTTP is not successful.
+	 *
+	 * @return boolean
+	 */
+	default boolean isFailed() {
+		return !isOk();
+	}
+
+	/**
+	 * Returns the HTTP is not successful.
+	 *
+	 * @return boolean
+	 */
+	default boolean isNotOk() {
+		return !isOk();
 	}
 
 	/**
@@ -74,6 +92,24 @@ public interface ResponseSpec {
 	 * @return Headers
 	 */
 	Headers headers();
+
+	/**
+	 * Returns the Headers value.
+	 *
+	 * @return Headers value
+	 */
+	default @Nullable String header(String name) {
+		return this.headers().get(name);
+	}
+
+	/**
+	 * Returns the Headers value.
+	 *
+	 * @return Headers value
+	 */
+	default <T> T header(Function<Headers, T> consumer) {
+		return consumer.apply(this.headers());
+	}
 
 	/**
 	 * Headers Consumer.
@@ -94,6 +130,34 @@ public interface ResponseSpec {
 	List<Cookie> cookies();
 
 	/**
+	 * Returns the Cookie value.
+	 *
+	 * @return Cookie
+	 */
+	default @Nullable Cookie cookie(String name) {
+		for (Cookie cookie : cookies()) {
+			if (cookie.name().equals(name)) {
+				return cookie;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the Cookie value.
+	 *
+	 * @return Cookie
+	 */
+	default @Nullable Cookie cookie(Predicate<Cookie> predicate) {
+		for (Cookie cookie : cookies()) {
+			if (predicate.test(cookie)) {
+				return cookie;
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * 读取消费 cookie
 	 *
 	 * @param consumer Consumer
@@ -102,6 +166,13 @@ public interface ResponseSpec {
 	default ResponseSpec cookies(Consumer<List<Cookie>> consumer) {
 		consumer.accept(this.cookies());
 		return this;
+	}
+
+	/**
+	 * not return.
+	 */
+	default void asVoid() {
+
 	}
 
 	/**
@@ -158,7 +229,18 @@ public interface ResponseSpec {
 	 * @return JsonNode
 	 */
 	default <T> T atJsonPathValue(String jsonPtrExpr, Class<T> valueType) {
-		return JsonUtil.convertValue(atJsonPath(jsonPtrExpr), valueType);
+		return JsonUtil.treeToValue(atJsonPath(jsonPtrExpr), valueType);
+	}
+
+	/**
+	 * jackson json path 语法读取节点
+	 *
+	 * @param jsonPtrExpr json path 表达式
+	 * @param valueType   value value type
+	 * @return JsonNode
+	 */
+	default <T> T atJsonPathValue(String jsonPtrExpr, JavaType valueType) {
+		return JsonUtil.treeToValue(atJsonPath(jsonPtrExpr), valueType);
 	}
 
 	/**
@@ -180,8 +262,7 @@ public interface ResponseSpec {
 	 * @return List
 	 */
 	default <T> List<T> atJsonPathList(String jsonPtrExpr, Class<T> valueType) {
-		CollectionLikeType collectionLikeType = JsonUtil.getListType(valueType);
-		return JsonUtil.convertValue(atJsonPath(jsonPtrExpr), collectionLikeType);
+		return atJsonPathValue(jsonPtrExpr, JsonUtil.getListType(valueType));
 	}
 
 	/**
@@ -201,6 +282,17 @@ public interface ResponseSpec {
 	 */
 	@Nullable
 	<T> T asValue(TypeReference<T> typeReference);
+
+	/**
+	 * 转换成 JsonPointer 语法的模型
+	 *
+	 * @param valueType valueType
+	 * @param <T>       泛型
+	 * @return bean
+	 */
+	default <T> T asJsonPointerBean(Class<T> valueType) {
+		return JsonPointerUtil.readValue(asJsonNode(), valueType);
+	}
 
 	/**
 	 * Returns body to List.
@@ -226,6 +318,28 @@ public interface ResponseSpec {
 	 * @return Map
 	 */
 	<V> Map<String, V> asMap(Class<?> valueType);
+
+	/**
+	 * 转换成文件上传 part
+	 *
+	 * @param name 表单名
+	 * @return Part
+	 */
+	default MultipartBody.Part asPart(String name) {
+		return asPart(name, null);
+	}
+
+	/**
+	 * 转换成文件上传 part
+	 *
+	 * @param name     表单名
+	 * @param fileName 文件名
+	 * @return Part
+	 */
+	default MultipartBody.Part asPart(String name, @Nullable String fileName) {
+		RequestBody requestBody = RequestBody.create(asBytes(), contentType());
+		return MultipartBody.Part.createFormData(name, fileName, requestBody);
+	}
 
 	/**
 	 * toFile.
@@ -309,8 +423,7 @@ public interface ResponseSpec {
 	 * @param consumer Consumer
 	 * @return ResponseBody
 	 */
-	@Nullable
-	default ResponseSpec rawBody(Consumer<ResponseBody> consumer) {
+	default ResponseSpec rawBody(Consumer<@Nullable ResponseBody> consumer) {
 		consumer.accept(this.rawBody());
 		return this;
 	}

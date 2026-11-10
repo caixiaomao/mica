@@ -17,9 +17,10 @@
 package net.dreamlu.mica.http;
 
 import okhttp3.FormBody;
+import org.jspecify.annotations.Nullable;
 
-import javax.annotation.Nullable;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * 表单构造器
@@ -36,7 +37,9 @@ public class FormBuilder {
 	}
 
 	public FormBuilder add(String name, @Nullable Object value) {
-		this.formBuilder.add(name, HttpRequest.handleValue(value));
+		if (value != null) {
+			this.formBuilder.add(name, HttpRequest.handleValue(value));
+		}
 		return this;
 	}
 
@@ -48,14 +51,19 @@ public class FormBuilder {
 	}
 
 	public FormBuilder addEncoded(String name, @Nullable Object encodedValue) {
-		this.formBuilder.addEncoded(name, HttpRequest.handleValue(encodedValue));
+		if (encodedValue != null) {
+			this.formBuilder.addEncoded(name, HttpRequest.handleValue(encodedValue));
+		}
+		return this;
+	}
+
+	public FormBuilder add(Consumer<FormBody.Builder> consumer) {
+		consumer.accept(this.formBuilder);
 		return this;
 	}
 
 	public HttpRequest build() {
-		FormBody formBody = formBuilder.build();
-		this.request.form(formBody);
-		return this.request;
+		return this.request.form(this.formBuilder.build());
 	}
 
 	public Exchange execute() {

@@ -16,16 +16,15 @@
 
 package net.dreamlu.mica.http;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import lombok.RequiredArgsConstructor;
 import net.dreamlu.mica.core.utils.Exceptions;
 import net.dreamlu.mica.core.utils.JsonUtil;
 import okhttp3.Call;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.jspecify.annotations.Nullable;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -34,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -41,15 +41,29 @@ import java.util.function.Function;
  *
  * @author L.cm
  */
-@RequiredArgsConstructor
 public class Exchange {
-	private BiConsumer<Request, IOException> failedBiConsumer = (r, e) -> {
-	};
 	private final Call call;
+	@Nullable
+	private BiConsumer<Request, HttpException> failedBiConsumer;
 
-	public Exchange onFailed(BiConsumer<Request, IOException> failConsumer) {
+	public Exchange(Call call) {
+		this.call = call;
+		this.failedBiConsumer = null;
+	}
+
+	public Exchange onFailed(BiConsumer<Request, HttpException> failConsumer) {
 		this.failedBiConsumer = failConsumer;
 		return this;
+	}
+
+	/**
+	 * not return.
+	 */
+	public void asVoid() {
+		try (HttpResponse ignored = new HttpResponse(call.execute())) {
+		} catch (IOException e) {
+			throw Exceptions.unchecked(e);
+		}
 	}
 
 	public <R> R onResponse(Function<ResponseSpec, R> func) {
@@ -61,11 +75,20 @@ public class Exchange {
 	}
 
 	@Nullable
+	public <R> R onResponse(Function<ResponseSpec, R> func, BiFunction<Request, IOException, R> errFunc) {
+		try (HttpResponse response = new HttpResponse(call.execute())) {
+			return func.apply(response);
+		} catch (IOException e) {
+			return errFunc.apply(call.request(), e);
+		}
+	}
+
+	@Nullable
 	public <R> R onSuccess(Function<ResponseSpec, R> func) {
 		try (HttpResponse response = new HttpResponse(call.execute())) {
 			return func.apply(response);
 		} catch (IOException e) {
-			failedBiConsumer.accept(call.request(), e);
+			onFailure(call.request(), e);
 			return null;
 		}
 	}
@@ -76,10 +99,10 @@ public class Exchange {
 			if (response.isOk()) {
 				return func.apply(response);
 			} else {
-				failedBiConsumer.accept(call.request(), new IOException(response.toString()));
+				onFailure(response);
 			}
 		} catch (IOException e) {
-			failedBiConsumer.accept(call.request(), e);
+			onFailure(call.request(), e);
 		}
 		return null;
 	}
@@ -96,7 +119,7 @@ public class Exchange {
 	 * Returns ok http response.
 	 *
 	 * <p>
-	 *     注意：body 不能读取，因为已经关闭掉了，建议还是直接用 onResponse 函数处理。
+	 * 注意：body 不能读取，因为已经关闭掉了，建议还是直接用 onResponse 函数处理。
 	 * </p>
 	 *
 	 * @return Response
@@ -184,6 +207,16 @@ public class Exchange {
 	}
 
 	/**
+	 * 转换成 JsonPointer 语法的模型
+	 * @param valueType valueType
+	 * @return bean
+	 * @param <T> 泛型
+	 */
+	public <T> T asJsonPointerBean(Class<T> valueType) {
+		return onResponse(responseSpec -> responseSpec.asJsonPointerBean(valueType));
+	}
+
+	/**
 	 * Returns body to List.
 	 *
 	 * @param valueType value type
@@ -214,6 +247,7 @@ public class Exchange {
 		return onResponse(responseSpec -> responseSpec.asMap(valueType));
 	}
 
+
 	/**
 	 * toFile.
 	 *
@@ -232,6 +266,18 @@ public class Exchange {
 	 */
 	public Path toFile(Path path) {
 		return onResponse(responseSpec -> responseSpec.toFile(path));
+	}
+
+	private void onFailure(Request request, IOException e) {
+		if (failedBiConsumer != null) {
+			failedBiConsumer.accept(request, new HttpException(request, e));
+		}
+	}
+
+	private void onFailure(HttpResponse response) {
+		if (failedBiConsumer != null) {
+			failedBiConsumer.accept(response.rawRequest(), new HttpException(response));
+		}
 	}
 
 }

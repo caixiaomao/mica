@@ -20,7 +20,6 @@ import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.io.IOException;
 
 /**
@@ -28,7 +27,6 @@ import java.io.IOException;
  *
  * @author L.cm
  */
-@ParametersAreNonnullByDefault
 public class AsyncCallback implements Callback {
 	private final AsyncExchange exchange;
 
@@ -48,7 +46,7 @@ public class AsyncCallback implements Callback {
 			if (response.isSuccessful()) {
 				exchange.onSuccessful(httpResponse);
 			} else {
-				exchange.onFailure(call.request(), new IOException(httpResponse.message()));
+				exchange.onFailure(httpResponse);
 			}
 		}
 	}

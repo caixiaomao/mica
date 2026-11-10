@@ -16,20 +16,21 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
  * DES加、解密处理工具
  *
  * @author L.cm
+ * @deprecated DES is insecure. Use AesUtil instead.
  */
-@UtilityClass
+@Deprecated
 public class DesUtil {
 	/**
 	 * 数字签名，密钥算法
@@ -68,7 +69,7 @@ public class DesUtil {
 		if (StringUtil.isBlank(data)) {
 			return null;
 		}
-		byte[] dataBytes = data.getBytes(Charsets.UTF_8);
+		byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
 		return encryptToHex(dataBytes, password);
 	}
 
@@ -85,7 +86,10 @@ public class DesUtil {
 			return null;
 		}
 		byte[] hexBytes = HexUtil.decode(data);
-		return new String(decrypt(hexBytes, password), Charsets.UTF_8);
+		if (hexBytes == null || hexBytes.length == 0) {
+			return null;
+		}
+		return new String(decrypt(hexBytes, password), StandardCharsets.UTF_8);
 	}
 
 	/**
@@ -111,7 +115,7 @@ public class DesUtil {
 		if (StringUtil.isBlank(data)) {
 			return null;
 		}
-		byte[] dataBytes = data.getBytes(Charsets.UTF_8);
+		byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
 		return encryptToBase64(dataBytes, password);
 	}
 
@@ -140,7 +144,7 @@ public class DesUtil {
 			return null;
 		}
 		byte[] dataBytes = Base64Util.decodeFromString(data);
-		return new String(decrypt(dataBytes, password), Charsets.UTF_8);
+		return new String(decrypt(dataBytes, password), StandardCharsets.UTF_8);
 	}
 
 	/**
@@ -162,7 +166,7 @@ public class DesUtil {
 	 * @return byte array
 	 */
 	public static byte[] encrypt(byte[] data, String desKey) {
-		return encrypt(data, Objects.requireNonNull(desKey).getBytes(Charsets.UTF_8));
+		return encrypt(data, Objects.requireNonNull(desKey).getBytes(StandardCharsets.UTF_8));
 	}
 
 	/**
@@ -184,7 +188,7 @@ public class DesUtil {
 	 * @return byte array
 	 */
 	public static byte[] decrypt(byte[] data, String desKey) {
-		return decrypt(data, Objects.requireNonNull(desKey).getBytes(Charsets.UTF_8));
+		return decrypt(data, Objects.requireNonNull(desKey).getBytes(StandardCharsets.UTF_8));
 	}
 
 	/**

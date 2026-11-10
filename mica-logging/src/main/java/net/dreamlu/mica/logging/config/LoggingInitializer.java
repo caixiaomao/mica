@@ -16,28 +16,38 @@
 
 package net.dreamlu.mica.logging.config;
 
-import net.dreamlu.mica.auto.annotation.AutoContextInitializer;
+import net.dreamlu.mica.auto.annotation.AutoEnvPostProcessor;
 import net.dreamlu.mica.logging.utils.LoggingUtil;
-import org.springframework.context.ApplicationContextInitializer;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.boot.EnvironmentPostProcessor;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.logging.LogFile;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MapPropertySource;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * logging 日志初始化
  *
  * @author L.cm
  */
-@AutoContextInitializer
-public class LoggingInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext>, Ordered {
+@AutoEnvPostProcessor
+public class LoggingInitializer implements EnvironmentPostProcessor, Ordered {
+	public static final String MICA_LOGGING_PROPERTY_SOURCE_NAME = "micaLoggingPropertySource";
 
 	@Override
-	public void initialize(ConfigurableApplicationContext context) {
-		ConfigurableEnvironment environment = context.getEnvironment();
+	public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
 		// 读取系统配置的日志目录，默认为项目下 logs
-		String logBase = environment.getProperty("logging.file.path", LoggingUtil.DEFAULT_LOG_DIR);
+		String logBase = environment.getProperty(LogFile.FILE_PATH_PROPERTY, LoggingUtil.DEFAULT_LOG_DIR);
 		// 用于 spring boot admin 中展示日志
-		System.setProperty("logging.file.name", logBase + "/${spring.application.name}/" + LoggingUtil.LOG_FILE_ALL);
+		if (!environment.containsProperty(LogFile.FILE_NAME_PROPERTY)) {
+			Map<String, Object> map = new HashMap<>(2);
+			map.put(LogFile.FILE_NAME_PROPERTY, logBase + "/${spring.application.name}/" + LoggingUtil.LOG_FILE_ALL);
+			MapPropertySource propertySource = new MapPropertySource(MICA_LOGGING_PROPERTY_SOURCE_NAME, map);
+			environment.getPropertySources().addLast(propertySource);
+		}
 	}
 
 	@Override

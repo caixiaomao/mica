@@ -16,11 +16,11 @@
 
 package net.dreamlu.mica.redis.cache;
 
-import net.dreamlu.mica.core.utils.ObjectUtil;
 import net.dreamlu.mica.core.utils.StringPool;
 import net.dreamlu.mica.core.utils.StringUtil;
+import org.jspecify.annotations.Nullable;
+import org.springframework.util.ObjectUtils;
 
-import javax.annotation.Nullable;
 import java.time.Duration;
 
 /**
@@ -53,15 +53,23 @@ public interface ICacheKey {
 	 * @param suffix 参数
 	 * @return cache key
 	 */
-	default CacheKey getKey(Object... suffix) {
+	default String getKeyStr(Object... suffix) {
 		String prefix = this.getPrefix();
 		// 拼接参数
-		String key;
-		if (ObjectUtil.isEmpty(suffix)) {
-			key = prefix;
-		} else {
-			key = prefix.concat(StringUtil.join(suffix, StringPool.COLON));
+		if (ObjectUtils.isEmpty(suffix)) {
+			return prefix;
 		}
+		return prefix.concat(StringUtil.join(suffix, StringPool.COLON));
+	}
+
+	/**
+	 * 组装 cache key
+	 *
+	 * @param suffix 参数
+	 * @return cache key
+	 */
+	default CacheKey getKey(Object... suffix) {
+		String key = this.getKeyStr(suffix);
 		Duration expire = this.getExpire();
 		return expire == null ? new CacheKey(key) : new CacheKey(key, expire);
 	}

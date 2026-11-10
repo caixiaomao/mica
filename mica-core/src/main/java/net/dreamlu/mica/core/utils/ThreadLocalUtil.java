@@ -18,8 +18,7 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +38,6 @@ import java.util.function.Supplier;
  * @author zhouhao
  * @since 2.0
  */
-@UtilityClass
 @SuppressWarnings("unchecked")
 public class ThreadLocalUtil {
 	private static final ThreadLocal<Map<String, Object>> LOCAL = ThreadLocal.withInitial(HashMap::new);
@@ -69,7 +67,6 @@ public class ThreadLocalUtil {
 	 * 设置一个值到ThreadLocal
 	 *
 	 * @param map map
-	 * @return 被放入的值
 	 * @see Map#putAll(Map)
 	 */
 	public static void put(Map<String, Object> map) {
@@ -79,7 +76,7 @@ public class ThreadLocalUtil {
 	/**
 	 * 删除参数对应的值
 	 *
-	 * @param key
+	 * @param key key
 	 * @see Map#remove(Object)
 	 */
 	public static void remove(String key) {
@@ -128,6 +125,7 @@ public class ThreadLocalUtil {
 	 * @see this#get(String)
 	 * @see this#remove(String)
 	 */
+	@Nullable
 	public static <T> T getAndRemove(String key) {
 		try {
 			return get(key);

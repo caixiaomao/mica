@@ -16,17 +16,16 @@
 
 package net.dreamlu.mica.http;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import net.dreamlu.mica.core.utils.Charsets;
 import net.dreamlu.mica.core.utils.Exceptions;
 import net.dreamlu.mica.core.utils.JsonUtil;
 import okhttp3.*;
-import okhttp3.internal.Util;
+import org.jspecify.annotations.Nullable;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 
-import javax.annotation.Nullable;
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -82,7 +81,7 @@ public class BytesResponse implements ResponseSpec, Closeable {
 
 	@Override
 	public String asString() {
-		return asString(Charsets.UTF_8);
+		return asString(StandardCharsets.UTF_8);
 	}
 
 	@Override
@@ -192,7 +191,7 @@ public class BytesResponse implements ResponseSpec, Closeable {
 
 	@Override
 	public void close() throws IOException {
-		Util.closeQuietly(response.body());
+		Util.closeQuietly(response);
 	}
 
 }

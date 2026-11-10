@@ -11,7 +11,7 @@
 </dependency>
 ```
 
-spring-retry 为可选依赖，用来对 http 结果断言重试。
+注意：**2.5.7 开始已经不再需要** spring-retry 为可选依赖，用来对 http 结果断言重试。
 ```xml
 <dependency>
     <groupId>org.springframework.retry</groupId>
@@ -25,7 +25,7 @@ spring-retry 为可选依赖，用来对 http 结果断言重试。
 compile("net.dreamlu:mica-http:${version}")
 ```
 
-spring-retry 为可选依赖，用来对 http 结果断言重试。
+注意：**2.5.7 开始已经不再需要** spring-retry 为可选依赖，用来对 http 结果断言重试。
 ```groovy
 compile("org.springframework.retry:spring-retry:${springRetryVersion}")
 ```
@@ -36,26 +36,24 @@ compile("org.springframework.retry:spring-retry:${springRetryVersion}")
 HttpRequest.setGlobalLog(LogLevel.BODY);
 // 设置控制台日志，用于没有日志依赖的 sdk 开发时使用
 HttpRequest.setGlobalLog(HttpLogger.Console, LogLevel.BODY);
+// 当然你也可以设定为自己的 log，这样就不用把 **net.dreamlu.mica.http** 包的日志设置为 info 级别。
+HttpRequest.setGlobalLog(log::info);
 ```
 
 ```java
 // 同步请求 url，方法支持 get、post、patch、put、delete
 HttpRequest.get("https://www.baidu.com")
-    .useSlf4jLog()                   //使用 Slf4j 日志，同类的有 .useConsoleLog(),日志级别为 BODY
-    .addHeader("x-account-id", "mica001") // 添加 header
-    .addCookie(new Cookie.Builder()  // 添加 cookie
-        .name("sid")
-        .value("mica_user_001")
-        .build()
-    )
-    .query("q", "mica") //设置 url 参数，默认进行 url encode
-    .queryEncoded("name", "encodedValue")
-    .formBuilder()    // 表单构造器，同类 multipartFormBuilder 文件上传表单
-    .add("id", 123123) // 表单参数
-    .retryOn(responseSpec -> !responseSpec.isOk()) // 结合 spring retry 进行结果集断言
-    .proxy(InetSocketAddress.createUnresolved("127.0.0.1", 8080)) // 设置代理
-    .execute()                      // 发起请求
-    .asJsonNode();                  // 结果集转换，注：如果网络异常等会直接抛出异常。
+	.useSlf4jLog() // 使用 Slf4j 日志，同类的有 .useConsoleLog(),日志级别为 BODY 和 自定义的 .useLog(log::info)
+	.addHeader("x-account-id", "mica001") // 添加 header
+	.addCookie(builder -> builder.domain("www.baidu.com").name("name").value("value"))  // 添加 cookie
+	.query("q", "mica") // 设置 url 参数，默认进行 url encode
+	.queryEncoded("name", "encodedValue")
+	.retryOn(responseSpec -> !responseSpec.isOk()) // 结合 spring retry 进行结果集断言
+	.proxy(InetSocketAddress.createUnresolved("127.0.0.1", 8080)) // 设置代理
+	.formBuilder()    // 表单构造器，同类 multipartFormBuilder 文件上传表单
+	.add("id", 123123) // 表单参数
+	.execute()                      // 发起请求
+	.asJsonNode();                  // 结果集转换，注：如果网络异常等会直接抛出异常。
 // 同类的方法有 asString、asBytes
 // json 类响应：asJsonNode、asValue、asList、asMap、atJsonPath、，采用 jackson 处理
 // file 文件：toFile
@@ -89,6 +87,13 @@ HttpRequest.delete("https://www.baidu.com")
         JsonNode jsonNode = responseSpec.asJsonNode();
     })
     .execute(); // 异步最后发起请求
+
+// cookie 管理，另外可以自定义实现 okhttp 的 CookieJar
+InMemoryCookieManager cookieManager = new InMemoryCookieManager();
+HttpRequest.get("https://demo.dreamlu.net/captcha.jpg")
+    .cookieManager(cookieManager)
+    .execute()
+    .asString();
 ```
 
 ## 示例
@@ -97,7 +102,7 @@ HttpRequest.delete("https://www.baidu.com")
 // 设置全局日志级别
 HttpRequest.setGlobalLog(LogLevel.BODY);
 
-// 直接用 jackson json path 语法
+// 直接用 jackson json path 语法（jackson Pointer 语法）
 private String getUserEmail(String accessToken) {
     return HttpRequest.get("https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))")
             .addHeader("Host", "api.linkedin.com")
@@ -123,6 +128,8 @@ public static void test() {
         .execute();
 }
 ```
+
+扩展阅读：[鲜为人知的 jackson Pointer 语法，超好用！](https://mp.weixin.qq.com/s/SSzX6cG7Y6AQ21vLgIuu4A)
 
 ### 示例代码2
 ```java
@@ -176,37 +183,23 @@ HttpRequest.get("https://www.baidu.com/some-form")
 ```
 
 ### 示例证书配置
+注意：使用 jks 格式证书！
 ```java
-InputStream isTrustCa = HttpRequestTest.class.getResourceAsStream("/cert/ca.jks");
-InputStream isSelfCert = HttpRequestTest.class.getResourceAsStream("/cert/outgoing.CertwithKey.pkcs12");
-
-KeyStore selfCert = KeyStore.getInstance("pkcs12");
-selfCert.load(isSelfCert, "password".toCharArray());
-KeyManagerFactory kmf = KeyManagerFactory.getInstance("sunx509");
-kmf.init(selfCert, "password".toCharArray());
-KeyStore caCert = KeyStore.getInstance("jks");
-caCert.load(isTrustCa, "caPassword".toCharArray());
-TrustManagerFactory tmf = TrustManagerFactory.getInstance("sunx509");
-tmf.init(caCert);
-SSLContext sc = SSLContext.getInstance("TLS");
-
-TrustManager[] trustManagers = tmf.getTrustManagers();
-X509TrustManager trustManager = (X509TrustManager) trustManagers[0];
-sc.init(kmf.getKeyManagers(), trustManagers, (SecureRandom) null);
-
 // 1. 全局配置证书
-OkHttpClient.Builder builder = new OkHttpClient.Builder()
-	.sslSocketFactory(sc.getSocketFactory(), trustManager)
-	.hostnameVerifier(TrustAllHostNames.INSTANCE);
-HttpRequest.setHttpClient(builder.build());
+HttpRequest.setGlobalSSL(
+    "classpath:/cert/ca.jks", "caPassword",
+    "classpath:/cert/tm.jks", "tmPassword"
+);
 
 // 2. 单次请求配置证书
 HttpRequest.get("https://123.xxx")
-	.useConsoleLog(LogLevel.BODY)
-	.sslSocketFactory(sc.getSocketFactory(), trustManager)
-	.disableSslValidation()
-	.execute()
-	.asString();
+    .useConsoleLog(LogLevel.BODY)
+    .useSSL(
+        "classpath:/cert/ca.jks", "caPassword",
+        "classpath:/cert/tm.jks", "tmPassword"
+    )
+    .execute()
+    .asString();
 ```
 
 ### 示例上传流

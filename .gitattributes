@@ -14,8 +14,10 @@
 *.yml text
 
 # Denote all files that are truly binary and should not be modified.
+*.onnx binary
 *.png binary
 *.jpg binary
 *.ttf binary
 *.jar binary
 *.db binary
+*.xdb binary

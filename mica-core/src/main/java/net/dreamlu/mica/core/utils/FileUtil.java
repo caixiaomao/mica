@@ -16,16 +16,13 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
-import org.springframework.util.Assert;
-import org.springframework.util.FileSystemUtils;
-import org.springframework.util.PatternMatchUtils;
-import org.springframework.util.StringUtils;
+import org.jspecify.annotations.Nullable;
+import org.springframework.util.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -37,7 +34,6 @@ import java.util.List;
  *
  * @author L.cm
  */
-@UtilityClass
 public class FileUtil extends org.springframework.util.FileCopyUtils {
 
 	/**
@@ -46,9 +42,10 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 	 * @author L.cm
 	 */
 	public static class TrueFilter implements FileFilter, Serializable {
+		@Serial
 		private static final long serialVersionUID = -6420452043795072619L;
 
-		public final static TrueFilter TRUE = new TrueFilter();
+		public static final TrueFilter TRUE = new TrueFilter();
 
 		@Override
 		public boolean accept(File pathname) {
@@ -287,7 +284,7 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 	 * @return the file contents, never {@code null}
 	 */
 	public static String readToString(final File file) {
-		return readToString(file, Charsets.UTF_8);
+		return readToString(file, StandardCharsets.UTF_8);
 	}
 
 	/**
@@ -314,8 +311,8 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 	 * @return the file contents, never {@code null}
 	 */
 	public static byte[] readToByteArray(final File file) {
-		try (InputStream in = Files.newInputStream(file.toPath())) {
-			return IoUtil.readToByteArray(in);
+		try {
+			return Files.readAllBytes(file.toPath());
 		} catch (IOException e) {
 			throw Exceptions.unchecked(e);
 		}
@@ -328,7 +325,7 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 	 * @param data the content to write to the file
 	 */
 	public static void writeToFile(final File file, final String data) {
-		writeToFile(file, data, Charsets.UTF_8, false);
+		writeToFile(file, data, StandardCharsets.UTF_8, false);
 	}
 
 	/**
@@ -340,7 +337,7 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 	 *               end of the file rather than overwriting
 	 */
 	public static void writeToFile(final File file, final String data, final boolean append) {
-		writeToFile(file, data, Charsets.UTF_8, append);
+		writeToFile(file, data, StandardCharsets.UTF_8, append);
 	}
 
 	/**
@@ -393,7 +390,7 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 	 */
 	public static void toFile(InputStream in, final File file) {
 		try (OutputStream out = new FileOutputStream(file)) {
-			FileUtil.copy(in, out);
+			FileCopyUtils.copy(in, out);
 		} catch (IOException e) {
 			throw Exceptions.unchecked(e);
 		}
@@ -427,7 +424,7 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 		}
 		final boolean rename = srcFile.renameTo(destFile);
 		if (!rename) {
-			FileUtil.copy(srcFile, destFile);
+			FileCopyUtils.copy(srcFile, destFile);
 			if (!srcFile.delete()) {
 				FileUtil.deleteQuietly(destFile);
 				throw new IOException("Failed to delete original file '" + srcFile + "' after copy to '" + destFile + "'");
@@ -457,6 +454,7 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 				FileSystemUtils.deleteRecursively(file);
 			}
 		} catch (final Exception ignored) {
+			// ignored
 		}
 
 		try {
@@ -493,7 +491,7 @@ public class FileUtil extends org.springframework.util.FileCopyUtils {
 	 * @return 行列表
 	 */
 	public static List<String> readLines(Path path) {
-		return readLines(path, Charsets.UTF_8);
+		return readLines(path, StandardCharsets.UTF_8);
 	}
 
 	/**

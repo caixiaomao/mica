@@ -21,7 +21,6 @@ package net.dreamlu.mica.logging.utils;
 
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import lombok.experimental.UtilityClass;
 import net.logstash.logback.composite.ContextJsonProvider;
 import net.logstash.logback.composite.GlobalCustomFieldsJsonProvider;
 import net.logstash.logback.composite.loggingevent.*;
@@ -35,7 +34,6 @@ import net.logstash.logback.stacktrace.ShortenedThrowableConverter;
  * @author jhipster
  * @author L.cm
  */
-@UtilityClass
 public class LogStashUtil {
 
 	public static LoggingEventJsonProviders jsonProviders(LoggerContext context,
@@ -50,7 +48,7 @@ public class LogStashUtil {
 		jsonProviders.addMessage(new MessageJsonProvider());
 		jsonProviders.addPattern(new LoggingEventPatternJsonProvider());
 		jsonProviders.addStackTrace(stackTraceJsonProvider());
-		jsonProviders.addThreadName(new ThreadNameJsonProvider());
+		jsonProviders.addThreadName(new LoggingEventThreadNameJsonProvider());
 		jsonProviders.addTimestamp(timestampJsonProvider());
 		jsonProviders.setContext(context);
 		return jsonProviders;

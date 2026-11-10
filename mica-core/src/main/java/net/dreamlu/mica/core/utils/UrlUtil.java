@@ -16,14 +16,16 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
+import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriUtils;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * url处理工具类
  *
  * @author L.cm
  */
-@UtilityClass
 public class UrlUtil extends org.springframework.web.util.UriUtils {
 
 	/**
@@ -33,7 +35,7 @@ public class UrlUtil extends org.springframework.web.util.UriUtils {
 	 * @return sourced String
 	 */
 	public static String encode(String source) {
-		return UrlUtil.encode(source, Charsets.UTF_8);
+		return UriUtils.encode(source, StandardCharsets.UTF_8);
 	}
 
 	/**
@@ -43,6 +45,6 @@ public class UrlUtil extends org.springframework.web.util.UriUtils {
 	 * @return decoded String
 	 */
 	public static String decode(String source) {
-		return UrlUtil.decode(source, Charsets.UTF_8);
+		return StringUtils.uriDecode(source, StandardCharsets.UTF_8);
 	}
 }

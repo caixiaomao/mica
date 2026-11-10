@@ -43,7 +43,8 @@ public class Captcha implements ICaptcha {
 	/**
 	 * 默认的验证码大小，暂时不支持外部设置，因为字体大小是写死的，后期会加自动计算
 	 */
-	private static final int WIDTH = 130, HEIGHT = 48;
+	private static final int WIDTH = 130;
+	private static final int HEIGHT = 48;
 	private static final String[] FONT_NAMES = new String[]{"001.ttf", "002.ttf", "003.ttf", "004.ttf"};
 	private BackgroundDraw backgroundDraw;
 	private CaptchaDraw captchaDraw;
@@ -71,7 +72,7 @@ public class Captcha implements ICaptcha {
 		this.captchaDraw = captchaDraw;
 		this.interferenceDraw = interferenceDraw;
 		this.random = random;
-		this.fonts = loadFonts();
+		this.fonts = loadAndRegisterFont();
 	}
 
 	public void setBackgroundDraw(BackgroundDraw backgroundDraw) {
@@ -83,11 +84,11 @@ public class Captcha implements ICaptcha {
 	}
 
 	public void setInterferenceDraw(InterferenceDraw interferenceDraw) {
-		this.interferenceDraw = Objects.requireNonNull(interferenceDraw, "InterferenceDraw is null.");;
+		this.interferenceDraw = Objects.requireNonNull(interferenceDraw, "InterferenceDraw is null.");
 	}
 
 	public void setRandom(Random random) {
-		this.random = Objects.requireNonNull(random, "Random is null.");;
+		this.random = Objects.requireNonNull(random, "Random is null.");
 	}
 
 	@Override
@@ -127,11 +128,16 @@ public class Captcha implements ICaptcha {
 		return graphics;
 	}
 
-	private static Font[] loadFonts() {
+	private static Font[] loadAndRegisterFont() {
+		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 		List<Font> fontList = new ArrayList<>();
 		for (String fontName : FONT_NAMES) {
 			String path = "fonts/" + fontName;
-			fontList.add(loadFont(new ClassPathResource(path)));
+			// 加载字体
+			Font font = loadFont(new ClassPathResource(path));
+			// 注册字体
+			ge.registerFont(font);
+			fontList.add(font);
 		}
 		return fontList.toArray(new Font[0]);
 	}

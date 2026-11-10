@@ -1,8 +1,8 @@
 # mica-metrics 组件
 
 ## 功能
-- sentinel 指标收集。
-- undertow 指标收集。
+- druid 指标收集。
+- ~~undertow 指标收集~~（spring boot 4 不支持）。
 
 ## 使用
 ### maven

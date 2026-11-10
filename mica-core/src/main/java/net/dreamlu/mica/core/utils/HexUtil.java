@@ -16,19 +16,17 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 /**
  * hex 工具，编解码全用 byte
  *
  * @author L.cm
  */
-@UtilityClass
 public class HexUtil {
-	public static final Charset DEFAULT_CHARSET = Charsets.UTF_8;
 	private static final byte[] DIGITS_LOWER = new byte[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 	private static final byte[] DIGITS_UPPER = new byte[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
@@ -77,7 +75,7 @@ public class HexUtil {
 	 * @return bytes as a hex string
 	 */
 	public static String encodeToString(byte[] data, boolean toLowerCase) {
-		return new String(encode(data, toLowerCase), DEFAULT_CHARSET);
+		return new String(encode(data, toLowerCase), StandardCharsets.UTF_8);
 	}
 
 	/**
@@ -87,7 +85,18 @@ public class HexUtil {
 	 * @return bytes as a hex string
 	 */
 	public static String encodeToString(byte[] data) {
-		return new String(encode(data), DEFAULT_CHARSET);
+		return encodeToString(data, StandardCharsets.UTF_8);
+	}
+
+	/**
+	 * encode Hex
+	 *
+	 * @param data    Data to Hex
+	 * @param charset Charset
+	 * @return bytes as a hex string
+	 */
+	public static String encodeToString(byte[] data, Charset charset) {
+		return new String(encode(data), charset);
 	}
 
 	/**
@@ -101,7 +110,35 @@ public class HexUtil {
 		if (StringUtil.isBlank(data)) {
 			return null;
 		}
-		return encodeToString(data.getBytes(DEFAULT_CHARSET));
+		return encodeToString(data.getBytes(StandardCharsets.UTF_8));
+	}
+
+	/**
+	 * encode Hex
+	 *
+	 * @param data    Data to Hex
+	 * @param charset Charset
+	 * @return bytes as a hex string
+	 */
+	@Nullable
+	public static String encodeToString(String data, Charset charset) {
+		return encodeToString(data, charset, charset);
+	}
+
+	/**
+	 * encode Hex
+	 *
+	 * @param data        Data to Hex
+	 * @param dataCharset Charset
+	 * @param toCharset   Charset
+	 * @return bytes as a hex string
+	 */
+	@Nullable
+	public static String encodeToString(String data, Charset dataCharset, Charset toCharset) {
+		if (StringUtil.isBlank(data)) {
+			return null;
+		}
+		return encodeToString(data.getBytes(dataCharset), toCharset);
 	}
 
 	/**
@@ -110,27 +147,87 @@ public class HexUtil {
 	 * @param data Hex data
 	 * @return decode hex to bytes
 	 */
-	@Nullable
-	public static byte[] decode(@Nullable String data) {
-		if (StringUtil.isBlank(data)) {
-			return null;
-		}
-		return decode(data.getBytes(DEFAULT_CHARSET));
+	public static byte @Nullable [] decode(String data) {
+		return decode(data, StandardCharsets.UTF_8);
 	}
 
 	/**
-	 * encode Hex
+	 * decode Hex
+	 *
+	 * @param data    Hex data
+	 * @param charset Charset
+	 * @return decode hex to bytes
+	 */
+	public static byte @Nullable [] decode(String data, Charset charset) {
+		if (StringUtil.isBlank(data)) {
+			return null;
+		}
+		return decode(data.getBytes(charset));
+	}
+
+	/**
+	 * decodeToString Hex
+	 *
+	 * @param data Data to Hex
+	 * @return bytes as a hex string
+	 */
+	public static String decodeToString(byte[] data) {
+		byte[] decodeBytes = decode(data);
+		return new String(decodeBytes, StandardCharsets.UTF_8);
+	}
+
+	/**
+	 * decodeToString Hex
+	 *
+	 * @param data    Data to Hex
+	 * @param charset Charset
+	 * @return bytes as a hex string
+	 */
+	public static String decodeToString(byte[] data, Charset charset) {
+		byte[] decodeBytes = decode(data);
+		return new String(decodeBytes, charset);
+	}
+
+	/**
+	 * decodeToString Hex
 	 *
 	 * @param data Data to Hex
 	 * @return bytes as a hex string
 	 */
 	@Nullable
 	public static String decodeToString(@Nullable String data) {
-		byte[] decodeBytes = decode(data);
-		if (decodeBytes == null) {
+		if (StringUtil.isBlank(data)) {
 			return null;
 		}
-		return new String(decodeBytes, DEFAULT_CHARSET);
+		return decodeToString(data.getBytes(StandardCharsets.UTF_8));
+	}
+
+	/**
+	 * decodeToString Hex
+	 *
+	 * @param data    Data to Hex
+	 * @param charset Charset
+	 * @return bytes as a hex string
+	 */
+	@Nullable
+	public static String decodeToString(String data, Charset charset) {
+		return decodeToString(data, charset, charset);
+	}
+
+	/**
+	 * decodeToString Hex
+	 *
+	 * @param data        Data to Hex
+	 * @param dataCharset Charset
+	 * @param toCharset   Charset
+	 * @return bytes as a hex string
+	 */
+	@Nullable
+	public static String decodeToString(String data, Charset dataCharset, Charset toCharset) {
+		if (StringUtil.isBlank(data)) {
+			return null;
+		}
+		return decodeToString(data.getBytes(dataCharset), toCharset);
 	}
 
 	/**

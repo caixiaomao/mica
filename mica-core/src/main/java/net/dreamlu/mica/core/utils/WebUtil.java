@@ -16,18 +16,17 @@
 
 package net.dreamlu.mica.core.utils;
 
-import lombok.experimental.UtilityClass;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
-import org.springframework.lang.Nullable;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.method.HandlerMethod;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Optional;
@@ -39,7 +38,6 @@ import java.util.function.Predicate;
  * @author L.cm
  */
 @Slf4j
-@UtilityClass
 public class WebUtil extends org.springframework.web.util.WebUtils {
 
 	/**
@@ -101,10 +99,23 @@ public class WebUtil extends org.springframework.web.util.WebUtils {
 	 * @param maxAgeInSeconds maxage
 	 */
 	public static void setCookie(HttpServletResponse response, String name, @Nullable String value, int maxAgeInSeconds) {
+		setCookie(response, name, value, maxAgeInSeconds, true);
+	}
+
+	/**
+	 * 设置cookie
+	 *
+	 * @param response        HttpServletResponse
+	 * @param name            cookie name
+	 * @param value           cookie value
+	 * @param maxAgeInSeconds maxage
+	 */
+	public static void setCookie(HttpServletResponse response, String name, @Nullable String value, int maxAgeInSeconds, boolean secure) {
 		Cookie cookie = new Cookie(name, value);
 		cookie.setPath(StringPool.SLASH);
 		cookie.setMaxAge(maxAgeInSeconds);
 		cookie.setHttpOnly(true);
+		cookie.setSecure(secure);
 		response.addCookie(cookie);
 	}
 
@@ -116,7 +127,7 @@ public class WebUtil extends org.springframework.web.util.WebUtils {
 	@Nullable
 	public static HttpServletRequest getRequest() {
 		return Optional.ofNullable(RequestContextHolder.getRequestAttributes())
-			.map(x -> (ServletRequestAttributes) x)
+			.map(ServletRequestAttributes.class::cast)
 			.map(ServletRequestAttributes::getRequest)
 			.orElse(null);
 	}
@@ -129,7 +140,7 @@ public class WebUtil extends org.springframework.web.util.WebUtils {
 	@Nullable
 	public static HttpServletResponse getResponse() {
 		return Optional.ofNullable(RequestContextHolder.getRequestAttributes())
-			.map(x -> (ServletRequestAttributes) x)
+			.map(ServletRequestAttributes.class::cast)
 			.map(ServletRequestAttributes::getResponse)
 			.orElse(null);
 	}
